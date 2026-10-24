@@ -1,0 +1,64 @@
+[project]
+name = "obzerve-workspace"
+version = "0.1.0"
+description = "Obzerve monorepo: observability & reliability platform for AI agents"
+readme = "README.md"
+requires-python = ">=3.12"
+# Every workspace package, so a plain `uv sync` installs the whole project.
+dependencies = ["obzerve-sdk", "obzerve-server", "research-agent"]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "obzerve-sdk",
+    "obzerve-server",
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+    "ruff>=0.17.2",
+]
+
+[tool.uv]
+package = false
+
+[tool.uv.workspace]
+members = ["sdk/python", "server", "examples/research_agent"]
+
+# --- ROCm (AMD GPU) PyTorch wheels -------------------------------------------
+[[tool.uv.index]]
+name = "pytorch-rocm"
+url = "https://download.pytorch.org/whl/rocm7.1"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-rocm" }
+torchvision = { index = "pytorch-rocm" }
+triton-rocm = { index = "pytorch-rocm" }
+obzerve-sdk = { workspace = true }
+obzerve-server = { workspace = true }
+research-agent = { workspace = true }
+
+[tool.pytest.ini_options]
+testpaths = ["sdk/python/tests", "server/tests", "examples/research_agent/tests"]
+addopts = "--import-mode=importlib"
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
+markers = [
+    "gpu: needs a GPU visible to PyTorch (skipped otherwise)",
+    "ollama: calls a real model on a local Ollama server (skipped otherwise)",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["web"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "ASYNC"]
+ignore = ["B008"]  # FastAPI dependency defaults
+
+[tool.ruff.lint.per-file-ignores]
+"**/migrations/versions/*.py" = ["E501", "I001"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["obzerve", "obzerve_server", "research_agent"]

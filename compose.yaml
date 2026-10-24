@@ -1,0 +1,35 @@
+# Local development dependencies. Run with `docker compose up -d` or `podman compose up -d`.
+services:
+  postgres:
+    image: docker.io/library/postgres:17
+    environment:
+      POSTGRES_USER: obzerve
+      POSTGRES_PASSWORD: obzerve
+      POSTGRES_DB: obzerve
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - obzerve-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U obzerve -d obzerve"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  redis:
+    image: docker.io/library/redis:7-alpine
+    # Append-only file: queued telemetry survives a Redis restart.
+    command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec"]
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - obzerve-redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  obzerve-pgdata:
+  obzerve-redisdata:

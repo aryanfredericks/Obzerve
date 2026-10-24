@@ -1,0 +1,21 @@
+[project]
+name = "obzerve-sdk"
+version = "0.1.0"
+description = "Python SDK for instrumenting AI agents with Obzerve"
+requires-python = ">=3.12"
+dependencies = [
+    "opentelemetry-api>=1.45.1",
+    "opentelemetry-exporter-otlp-proto-http>=1.45.1",
+    "opentelemetry-sdk>=1.45.1",
+    "requests>=2.34.2",
+]
+
+[project.scripts]
+obzerve = "obzerve.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/obzerve"]
