@@ -1,5 +1,7 @@
 # Obzerve
 
+[![CI](https://github.com/aryanfredericks/Obzerve/actions/workflows/ci.yml/badge.svg)](https://github.com/aryanfredericks/Obzerve/actions/workflows/ci.yml)
+
 Obzerve is an open-source, self-hostable observability and reliability platform for AI agents. It records each agent run as a trace of LLM calls, retrieval, tool calls and agent handoffs, so you can work out *which* operation made the answer bad.
 
 **Status:** Phases 1–3 are done. You can trace agents end to end and see latency, error, token and estimated-cost metrics. Ingestion can run through a queue that survives database outages without losing data. A failed trace can be replayed and turned into a regression case, and a release gate checks prompt or model changes against a baseline. See [docs/architecture.md](docs/architecture.md) for the design, failure handling, benchmarks and roadmap.
@@ -20,11 +22,24 @@ agent + obzerve SDK ──OTLP/HTTP──▶ FastAPI ingestion ─────�
 | `web/` | React + TypeScript dashboard (Vite) |
 | `examples/research_agent/` | Demo research agent: local mock LLM, GPU embeddings, injectable failures |
 | `tools/loadtest.py` | Ingestion load test that checks no telemetry was lost |
-| `compose.yaml` | PostgreSQL and Redis for local development |
+| `compose.yaml` | PostgreSQL and Redis for development; the whole platform with `--profile stack` |
+| `server/Dockerfile`, `web/Dockerfile`, `deploy/` | Container images and the dashboard's nginx config |
 
 The Python packages form a single [uv](https://docs.astral.sh/uv/) workspace with one lockfile.
 
-## Quick start
+**New here? Follow [docs/getting-started.md](docs/getting-started.md).** It goes step by step from a fresh clone to replaying a failure and gating a fix, in about 15 minutes, offline.
+
+## Run it in containers
+
+Only Docker or Podman is needed:
+
+```bash
+make stack-demo   # dashboard http://localhost:8080, API http://localhost:8000, key dev_project_key
+```
+
+See [docs/deployment.md](docs/deployment.md) for configuration, scaling, upgrades and hardening.
+
+## Quick start (development)
 
 Prerequisites: `uv`, Node 20+, and Docker or Podman.
 
@@ -199,6 +214,7 @@ The dashboard sends the key from its **API key** control, which falls back to `V
 make test        # pytest: SDK, server, queue/worker failure tests (need `make db-up`), demo agent
 make lint        # ruff + TypeScript typecheck
 make loadtest    # 20s of concurrent ingestion, then verifies every trace was stored
+make ci          # the same checks GitHub CI runs
 ```
 
 Server tests run against a throwaway `obzerve_test` database and Redis db 15. Set `OBZERVE_TEST_DATABASE_URL` or `OBZERVE_TEST_REDIS_URL` to use other ones. Server settings come from `OBZERVE_*` environment variables (see `server/src/obzerve_server/config.py`).

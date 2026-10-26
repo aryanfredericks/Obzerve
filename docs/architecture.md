@@ -113,4 +113,4 @@ All other attributes are kept in `attributes` (JSONB). Events and resource attri
 | 1 | SDK, OTLP ingestion, PostgreSQL, trace list/detail UI, error and retry search, tenant scoping | **Done** |
 | 2 | Queue (Redis Streams) and workers, SDK delivery accounting, latency/error/token metrics, estimated cost with dated prices, Prometheus self-metrics, failure and load tests | **Done** |
 | 3 | Replay (recorded / LLM-live / live) with divergence detection and side-effect guards, trace-to-regression-case conversion, prompt versions, eval runs, comparison and release gate | **Done** |
-| 4 (next) | User auth, CI/CD, containerized deployment, docs, polished demo; alerting (p95 / error rate / budget rules with windows and cooldowns) | |
+| 4 (in progress) | Done: CI (GitHub Actions), container images, compose deployment ([deployment.md](deployment.md)). Next: user accounts and login, reproducible demo walkthrough and docs, alerting (p95 / error rate / budget rules with windows and cooldowns) | |

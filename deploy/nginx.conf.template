@@ -1,0 +1,42 @@
+# Rendered by the nginx image's envsubst step (variables: OBZERVE_API_UPSTREAM).
+server {
+    listen 8080;
+    server_name _;
+    root /usr/share/nginx/html;
+
+    # Note: an add_header inside a location replaces (not extends) these, so the
+    # locations below that set Cache-Control repeat them.
+    add_header X-Content-Type-Options nosniff always;
+    add_header Referrer-Policy same-origin always;
+    add_header X-Frame-Options DENY always;
+
+    client_max_body_size 1m;
+
+    location /api/ {
+        proxy_pass ${OBZERVE_API_UPSTREAM};
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 60s;
+    }
+
+    location = /readyz {
+        proxy_pass ${OBZERVE_API_UPSTREAM};
+    }
+
+    # Vite fingerprints asset file names, so they can be cached forever.
+    location /assets/ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        add_header X-Content-Type-Options nosniff always;
+    }
+
+    # Single-page app: unknown paths serve index.html; never cache it.
+    location / {
+        try_files $uri /index.html;
+        add_header Cache-Control "no-cache";
+        add_header X-Content-Type-Options nosniff always;
+        add_header Referrer-Policy same-origin always;
+        add_header X-Frame-Options DENY always;
+    }
+}
