@@ -101,7 +101,10 @@ class MockLLM:
         prompt = instruction + "\n\n" + "\n\n".join(context)
         if simulate_timeout:
             time.sleep(self.timeout_s)
-            raise LLMTimeoutError(f"{self.model} did not respond within {self.timeout_s:.1f}s")
+            raise LLMTimeoutError(
+                f"{self.model} did not respond within {self.timeout_s:.1f}s "
+                "(simulated timeout, injected fault)"
+            )
 
         if max_output_tokens is not None:
             # Roughly 30 tokens per extracted sentence.

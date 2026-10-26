@@ -1,8 +1,9 @@
 # Common development tasks. Requires uv, npm, and docker or podman.
 COMPOSE ?= $(shell command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1 && echo "docker compose" || echo "podman compose")
+ENGINE ?= $(shell command -v docker >/dev/null 2>&1 && echo docker || echo podman)
 DEV_KEY ?= dev_project_key
 
-.PHONY: help setup gpu-check db-up db-down migrate bootstrap server server-queue worker queue-status web demo loadtest test lint format
+.PHONY: help setup gpu-check db-up db-down migrate bootstrap server server-queue worker queue-status web demo loadtest test lint format ci stack stack-demo stack-ps stack-logs stack-down
 
 help:
 	@grep -E '^[a-z-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-12s %s\n", $$1, $$2}'
@@ -58,6 +59,36 @@ lint: ## Lint Python and typecheck the dashboard
 	uv run ruff check .
 	uv run ruff format --check .
 	cd web && npm run typecheck
+
+ci: ## Run the same checks as GitHub CI (needs `make db-up`)
+	uv run ruff check .
+	uv run ruff format --check .
+	uv run obzerve-server migrate
+	uv run obzerve-server check-migrations
+	OBZERVE_REQUIRE_SERVICES=1 uv run pytest -rs
+	cd web && npm run build
+
+stack: ## Build and run the whole platform in containers (dashboard :8080, API :8000)
+	$(COMPOSE) --profile stack up -d --build
+
+stack-demo: ## Like `stack`, plus the demo project, its API key, and the demo model price
+	OBZERVE_DASHBOARD_KEY=$(DEV_KEY) $(COMPOSE) --profile stack up -d --build
+	$(COMPOSE) --profile stack exec api obzerve-server create-project demo --key $(DEV_KEY) --if-not-exists
+	$(COMPOSE) --profile stack exec api obzerve-server pricing set obzerve-mock-llm-1 \
+		--provider local --input 0.50 --output 1.50 --cached-input 0.05 --note "Demo price for the mock model"
+	@echo "Dashboard: http://localhost:8080   API: http://localhost:8000   key: $(DEV_KEY)"
+
+stack-ps: ## Show the platform's containers
+	$(COMPOSE) --profile stack ps
+
+stack-logs: ## Follow the API and worker logs
+	$(COMPOSE) --profile stack logs -f api worker
+
+stack-down: ## Stop all Obzerve containers, including scaled-out workers (data is kept)
+	$(COMPOSE) --profile stack down
+	@# `compose down` can miss replicas added with --scale; remove any that are left.
+	@$(ENGINE) ps -aq --filter label=com.docker.compose.project=obzerve \
+		--filter label=com.docker.compose.service=worker | xargs -r $(ENGINE) rm -f >/dev/null
 
 format: ## Auto-format Python
 	uv run ruff format .

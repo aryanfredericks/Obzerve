@@ -23,6 +23,16 @@ from obzerve_server.cli import migrate
 from obzerve_server.config import Settings
 from obzerve_server.models import Project, ProjectApiKey
 
+# In CI, a missing service must fail the run instead of silently skipping the server tests.
+REQUIRE_SERVICES = os.environ.get("OBZERVE_REQUIRE_SERVICES") == "1"
+
+
+def _unavailable(message: str) -> None:
+    if REQUIRE_SERVICES:
+        pytest.fail(f"{message} (OBZERVE_REQUIRE_SERVICES=1)", pytrace=False)
+    pytest.skip(message)
+
+
 TEST_DATABASE_URL = os.environ.get(
     "OBZERVE_TEST_DATABASE_URL",
     "postgresql+asyncpg://obzerve:obzerve@localhost:5432/obzerve_test",
@@ -50,7 +60,7 @@ def database_url() -> str:
     try:
         asyncio.run(_recreate_database(TEST_DATABASE_URL))
     except (OSError, asyncpg.PostgresError) as exc:
-        pytest.skip(f"PostgreSQL unavailable for server tests ({exc}); run `podman compose up -d`")
+        _unavailable(f"PostgreSQL unavailable for server tests ({exc}); run `podman compose up -d`")
     migrate(TEST_DATABASE_URL)
     return TEST_DATABASE_URL
 
@@ -225,7 +235,7 @@ async def _redis_reachable(url: str) -> bool:
 async def redis_url():
     url = os.environ.get("OBZERVE_TEST_REDIS_URL", "redis://localhost:6379/15")
     if not await _redis_reachable(url):
-        pytest.skip("Redis unavailable for queue tests; run `podman compose up -d`")
+        _unavailable("Redis unavailable for queue tests; run `podman compose up -d`")
     yield url
     client = Redis.from_url(url)
     await client.flushdb()

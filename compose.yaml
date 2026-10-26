@@ -1,10 +1,33 @@
-# Local development dependencies. Run with `docker compose up -d` or `podman compose up -d`.
+# Obzerve with Docker Compose or Podman Compose.
+#
+#   podman compose up -d                          # development: PostgreSQL + Redis only
+#   podman compose --profile stack up -d --build  # the whole platform (see docs/deployment.md)
+#
+# Settings come from the environment or a .env file next to this file. The defaults
+# are for local use only: change OBZERVE_DB_PASSWORD before exposing anything.
+
+# A fixed project name keeps container names and labels the same wherever the repo is cloned.
+name: obzerve
+
+x-server: &server
+  build:
+    context: .
+    dockerfile: server/Dockerfile
+  image: localhost/obzerve-server:latest
+  restart: unless-stopped
+  environment:
+    OBZERVE_DATABASE_URL: postgresql+asyncpg://obzerve:${OBZERVE_DB_PASSWORD:-obzerve}@postgres:5432/obzerve
+    OBZERVE_REDIS_URL: redis://redis:6379/0
+    # Queue mode: the API accepts telemetry even while PostgreSQL is slow or down.
+    OBZERVE_INGEST_MODE: queue
+
 services:
   postgres:
     image: docker.io/library/postgres:17
+    restart: unless-stopped
     environment:
       POSTGRES_USER: obzerve
-      POSTGRES_PASSWORD: obzerve
+      POSTGRES_PASSWORD: ${OBZERVE_DB_PASSWORD:-obzerve}
       POSTGRES_DB: obzerve
     ports:
       - "127.0.0.1:5432:5432"
@@ -18,6 +41,7 @@ services:
 
   redis:
     image: docker.io/library/redis:7-alpine
+    restart: unless-stopped
     # Append-only file: queued telemetry survives a Redis restart.
     command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec"]
     ports:
@@ -29,6 +53,70 @@ services:
       interval: 2s
       timeout: 3s
       retries: 30
+
+  # ---- the platform (profile "stack") ----
+
+  migrate:
+    <<: *server
+    profiles: ["stack"]
+    restart: "no"
+    command: ["obzerve-server", "migrate"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    <<: *server
+    profiles: ["stack"]
+    command: ["obzerve-server", "serve", "--host", "0.0.0.0", "--port", "8000"]
+    # Declared here as well as in the Dockerfile: Podman's default (OCI) image format
+    # drops Dockerfile HEALTHCHECKs, and the dashboard waits for the API to be healthy.
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/readyz', timeout=2)"]
+      interval: 5s
+      timeout: 3s
+      start_period: 10s
+      retries: 5
+    ports:
+      - "${OBZERVE_API_BIND:-127.0.0.1}:${OBZERVE_API_PORT:-8000}:8000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+  worker:
+    <<: *server
+    profiles: ["stack"]
+    command: ["obzerve-server", "worker"]
+    # Scale out with: podman compose --profile stack up -d --scale worker=3
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9101/metrics', timeout=2)"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: web/Dockerfile
+      args:
+        # Empty by default: users enter an API key in the dashboard. `make stack-demo`
+        # sets the local demo key for convenience.
+        VITE_OBZERVE_API_KEY: ${OBZERVE_DASHBOARD_KEY:-}
+    image: localhost/obzerve-web:latest
+    profiles: ["stack"]
+    restart: unless-stopped
+    ports:
+      - "${OBZERVE_WEB_BIND:-127.0.0.1}:${OBZERVE_WEB_PORT:-8080}:8080"
+    depends_on:
+      api:
+        condition: service_healthy
 
 volumes:
   obzerve-pgdata:
