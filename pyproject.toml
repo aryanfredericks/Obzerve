@@ -5,13 +5,15 @@ description = "Obzerve monorepo: observability & reliability platform for AI age
 readme = "README.md"
 requires-python = ">=3.12"
 # Every workspace package, so a plain `uv sync` installs the whole project.
-dependencies = ["obzerve-sdk", "obzerve-server", "research-agent"]
+dependencies = ["obzerve", "obzerve-server", "research-agent"]
 
 [dependency-groups]
 dev = [
+    "anthropic>=2.3.0",
     "httpx>=0.28.1",
-    "obzerve-sdk",
+    "obzerve",
     "obzerve-server",
+    "openai>=3.37.0",
     "pytest>=9.1.1",
     "pytest-asyncio>=1.4.0",
     "ruff>=0.17.2",
@@ -33,7 +35,7 @@ explicit = true
 torch = { index = "pytorch-rocm" }
 torchvision = { index = "pytorch-rocm" }
 triton-rocm = { index = "pytorch-rocm" }
-obzerve-sdk = { workspace = true }
+obzerve = { workspace = true }
 obzerve-server = { workspace = true }
 research-agent = { workspace = true }
 

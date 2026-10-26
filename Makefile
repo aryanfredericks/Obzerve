@@ -3,7 +3,7 @@ COMPOSE ?= $(shell command -v docker >/dev/null 2>&1 && docker compose version >
 ENGINE ?= $(shell command -v docker >/dev/null 2>&1 && echo docker || echo podman)
 DEV_KEY ?= dev_project_key
 
-.PHONY: help setup gpu-check db-up db-down migrate bootstrap server server-queue worker queue-status web demo loadtest test lint format ci stack stack-demo stack-ps stack-logs stack-down
+.PHONY: help setup gpu-check db-up db-down migrate bootstrap server server-queue worker queue-status web demo loadtest test lint format ci sdk-check stack stack-demo stack-ps stack-logs stack-down
 
 help:
 	@grep -E '^[a-z-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-12s %s\n", $$1, $$2}'
@@ -67,6 +67,12 @@ ci: ## Run the same checks as GitHub CI (needs `make db-up`)
 	uv run obzerve-server check-migrations
 	OBZERVE_REQUIRE_SERVICES=1 uv run pytest -rs
 	cd web && npm run build
+
+sdk-check: ## Build the SDK wheel, check its metadata, and test it installed on Python 3.10 and 3.13
+	rm -rf dist && uv build --package obzerve -o dist
+	uvx twine check --strict dist/*
+	tools/test_sdk_wheel.sh 3.10 minimum dist/*.whl
+	tools/test_sdk_wheel.sh 3.13 latest dist/*.whl
 
 stack: ## Build and run the whole platform in containers (dashboard :8080, API :8000)
 	$(COMPOSE) --profile stack up -d --build

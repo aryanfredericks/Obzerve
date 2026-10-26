@@ -200,6 +200,10 @@ These are the same checks as GitHub CI. Run them with the development databases 
 make ci           # ruff, migrations check, all tests, dashboard build
 ```
 
+## Next: monitor your own agent
+
+Install the SDK in your agent's project (`pip install obzerve`), create a project and key (`obzerve-server create-project my-app`), and add `observer.instrument()` plus one `observer.trace(...)` around each request. See [Instrumenting your own agent](../README.md#instrumenting-your-own-agent) and the [SDK README](../sdk/python/README.md).
+
 ## 10. Stop everything
 
 | You started | Stop it with |

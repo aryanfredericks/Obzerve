@@ -30,6 +30,7 @@ from opentelemetry.trace import Status, StatusCode
 from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
 
 from obzerve import attributes as attrs
+from obzerve._version import __version__
 from obzerve.attributes import SpanKind
 from obzerve.delivery import AccountingProcessor, DeliveryStats
 from obzerve.payloads import DEFAULT_REDACT_KEYS, PayloadSerializer
@@ -44,8 +45,6 @@ from obzerve.replay import (
     input_hash,
     rebuild_exception,
 )
-
-__version__ = "0.1.0"
 
 F = TypeVar("F", bound=Callable[..., Any])
 
@@ -138,6 +137,26 @@ class ObzerveSpan:
             self._span.set_attribute(truncated_key, True)
         if redacted and key == attrs.INPUT:
             self._span.set_attribute(attrs.INPUT_REDACTED, True)
+
+
+class ManualSpan(ObzerveSpan):
+    """A span ended explicitly (see ``Observer.start_span``). Ending twice is a no-op."""
+
+    def __init__(
+        self, span: otel_trace.Span, serializer: PayloadSerializer, capture_payloads: bool
+    ):
+        super().__init__(span, serializer, capture_payloads)
+        self.ended = False
+
+    def end(self, error: BaseException | None = None) -> None:
+        if self.ended:
+            return
+        self.ended = True
+        if error is not None:
+            _record_error(self._span, error)
+        elif self._span.status.status_code is StatusCode.UNSET:
+            self._span.set_status(Status(StatusCode.OK))
+        self._span.end()
 
 
 class Observer:
@@ -403,6 +422,33 @@ class Observer:
         counters[name] = counters.get(name, 0) + 1
         return f"{name}#{counters[name]}"
 
+    def start_span(
+        self,
+        name: str,
+        *,
+        kind: str = SpanKind.FUNCTION,
+        input: Any = None,
+        attributes: Mapping[str, Any] | None = None,
+    ) -> ManualSpan:
+        """Start a span that is *not* made current and is ended explicitly with
+        ``end()`` -- for work that outlives a ``with`` block, such as a streamed
+        response consumed later by the caller."""
+        otel_span = self._tracer.start_span(name)
+        span = ManualSpan(otel_span, self._serializer, self._capture_payloads)
+        span.set_attribute(attrs.SPAN_KIND, kind)
+        if attributes:
+            span.set_attributes(attributes)
+        if input is not None:
+            span.set_input(input)
+        return span
+
+    def instrument(self, **libraries: bool | None):
+        """Trace calls made through supported LLM client libraries automatically.
+        See ``obzerve.instrumentation.instrument`` for the options."""
+        from obzerve.instrumentation import instrument
+
+        return instrument(self, **libraries)
+
     def current_span(self) -> ObzerveSpan:
         return ObzerveSpan(otel_trace.get_current_span(), self._serializer, self._capture_payloads)
 
@@ -439,8 +485,22 @@ class _CallState:
 class _ReplayableCall:
     """Shared logic of ``Observer.replayable`` for sync and async functions."""
 
-    def __init__(self, observer, name, fn, kind, encode, decode, side_effect, exclude_args):
+    def __init__(
+        self,
+        observer,
+        name,
+        fn,
+        kind,
+        encode,
+        decode,
+        side_effect,
+        exclude_args,
+        normalize_input: Callable[[dict[str, Any]], Any] | None = None,
+    ):
         self.observer: Observer = observer
+        # Turns the bound arguments into JSON-friendly data for display and hashing
+        # (e.g. tensors -> lists), so the input hash does not depend on repr().
+        self.normalize_input = normalize_input
         self.name = name
         self.fn = fn
         self.kind = kind
@@ -462,6 +522,11 @@ class _ReplayableCall:
         obs = self.observer
         key = obs._next_replay_key(self.name)
         arguments = self._arguments(args, kwargs)
+        if self.normalize_input is not None:
+            try:
+                arguments = self.normalize_input(arguments)
+            except Exception:  # fall back to the raw arguments; never break the call
+                pass
         digest = input_hash(arguments)
         session = active_session.get()
         with obs.span(self.name, kind=self.kind, input=arguments) as span:
@@ -517,7 +582,17 @@ class _ReplayableCall:
     def record(self, state: _CallState, result: Any) -> Any:
         obs = self.observer
         if obs._capture_payloads:
-            exact = obs._serializer.serialize_exact(self.encode(result), obs._replay_max_chars)
+            try:
+                encoded = self.encode(result)
+            except Exception as exc:  # recording must never break the caller
+                state.span.set_attributes(
+                    {
+                        attrs.REPLAY_COMPLETE: False,
+                        attrs.REPLAY_INCOMPLETE_REASON: f"could not encode result: {exc!r}"[:300],
+                    }
+                )
+                return result
+            exact = obs._serializer.serialize_exact(encoded, obs._replay_max_chars)
             state.span.set_attributes(
                 {attrs.OUTPUT: exact.text, attrs.REPLAY_COMPLETE: exact.complete}
             )

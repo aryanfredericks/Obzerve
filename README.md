@@ -17,7 +17,7 @@ agent + obzerve SDK ──OTLP/HTTP──▶ FastAPI ingestion ─────�
 
 | Path | What it is |
 | --- | --- |
-| `sdk/python/` | `obzerve-sdk`: Python instrumentation built on the OpenTelemetry SDK |
+| `sdk/python/` | `obzerve` (published to PyPI): the Python SDK, built on OpenTelemetry, with automatic instrumentation for OpenAI, Anthropic and Hugging Face |
 | `server/` | `obzerve-server`: OTLP ingestion, dashboard API, migrations, admin CLI |
 | `web/` | React + TypeScript dashboard (Vite) |
 | `examples/research_agent/` | Demo research agent: local mock LLM, GPU embeddings, injectable failures |
@@ -100,32 +100,41 @@ make gpu-check
 
 ## Instrumenting your own agent
 
+Install the SDK in the agent's project:
+
+```bash
+pip install obzerve              # with extras for your clients, e.g. "obzerve[openai,anthropic]"
+```
+
+`obzerve` is published to PyPI from this repository (see [docs/publishing.md](docs/publishing.md)). Until the first release is out, install it from GitHub:
+
+```bash
+pip install "obzerve @ git+https://github.com/aryanfredericks/Obzerve.git#subdirectory=sdk/python"
+```
+
+Then wrap each request in a trace and turn on automatic instrumentation. Every call made through `openai`, `anthropic`, `huggingface_hub` or `transformers` becomes an LLM span, with model, provider and token usage, and is recorded for replay:
+
 ```python
 from obzerve import Observer, SpanKind
 
 observer = Observer(
     endpoint="http://localhost:8000", api_key="dev_project_key", service_name="my-agent"
 )
+observer.instrument()  # OpenAI, Anthropic, Hugging Face (InferenceClient + transformers)
 
 with observer.trace("research_agent", input=question) as trace:
     with observer.span("search_web", kind=SpanKind.TOOL, input={"query": question}) as span:
         results = search(question)
         span.set_output(results)
-    with observer.span("llm.generate", kind=SpanKind.LLM) as span:
-        reply = call_model(...)
-        span.set_llm(
-            model="gpt-x",
-            provider="acme",
-            input_tokens=812,
-            output_tokens=95,
-            cached_input_tokens=512,
-        )
-    trace.set_output(reply)
+    reply = client.chat.completions.create(model="gpt-x", messages=[...])  # traced automatically
+    trace.set_output(reply.choices[0].message.content)
 
 
 @observer.observe(kind=SpanKind.TOOL)  # decorator form, sync or async
 def fetch_page(url: str) -> str: ...
 ```
+
+The [SDK README](sdk/python/README.md) has the details: what each integration records, streaming, replay, and current limits. For a model or client the instrumentation doesn't cover, record usage on any span with `span.set_llm(model=..., provider=..., input_tokens=..., output_tokens=...)`.
 
 - **Non-blocking:** spans are exported in batches from a background thread through a bounded queue with short timeouts. When the server answers 503 (backpressure or an outage), the exporter retries and honours `Retry-After`. If the buffer fills up anyway, spans are dropped. The agent is never blocked and never sees an error from telemetry.
 - **Delivery stats:** `observer.stats()` returns exact counts of exported, failed, dropped and pending spans, so lost telemetry is visible instead of silent.

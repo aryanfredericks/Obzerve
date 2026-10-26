@@ -1,21 +1,72 @@
 [project]
-name = "obzerve-sdk"
-version = "0.1.0"
-description = "Python SDK for instrumenting AI agents with Obzerve"
-requires-python = ">=3.12"
-dependencies = [
-    "opentelemetry-api>=1.45.1",
-    "opentelemetry-exporter-otlp-proto-http>=1.45.1",
-    "opentelemetry-sdk>=1.45.1",
-    "requests>=2.34.2",
+name = "obzerve"
+dynamic = ["version"]
+description = "Observability, replay, and regression testing for AI agents: OpenTelemetry tracing with automatic instrumentation for OpenAI, Anthropic, and Hugging Face models."
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [{ name = "Aryan Fredericks" }]
+requires-python = ">=3.10"
+keywords = [
+    "observability", "tracing", "opentelemetry", "llm", "agents", "ai-agents",
+    "openai", "anthropic", "huggingface", "transformers", "replay", "evals",
 ]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Testing",
+    "Topic :: System :: Monitoring",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Typing :: Typed",
+]
+dependencies = [
+    "opentelemetry-api>=1.27",
+    "opentelemetry-sdk>=1.27",
+    "opentelemetry-exporter-otlp-proto-http>=1.27",
+    "requests>=2.28",
+]
+
+[project.optional-dependencies]
+# Convenience pins for the client libraries Obzerve instruments. The core package
+# never imports them; instrumentation is best-effort for other versions.
+openai = ["openai>=3"]
+anthropic = ["anthropic>=2"]
+huggingface = ["huggingface_hub>=2"]
+transformers = ["transformers>=5", "torch"]
+all = ["obzerve[openai,anthropic,huggingface,transformers]"]
+
+[project.urls]
+Homepage = "https://github.com/aryanfredericks/Obzerve"
+Documentation = "https://github.com/aryanfredericks/Obzerve/blob/main/sdk/python/README.md"
+Source = "https://github.com/aryanfredericks/Obzerve/tree/main/sdk/python"
+Issues = "https://github.com/aryanfredericks/Obzerve/issues"
+Changelog = "https://github.com/aryanfredericks/Obzerve/blob/main/sdk/python/CHANGELOG.md"
 
 [project.scripts]
 obzerve = "obzerve.cli:main"
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"
+
+[tool.hatch.version]
+path = "src/obzerve/_version.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/obzerve"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/obzerve", "tests", "README.md", "CHANGELOG.md", "LICENSE"]
+
+[tool.ruff]
+# The SDK supports older Pythons than the rest of the workspace: lint it as 3.10 code
+# so pyupgrade never suggests 3.11+ features (e.g. datetime.UTC).
+extend = "../../pyproject.toml"
+target-version = "py310"
