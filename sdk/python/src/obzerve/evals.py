@@ -18,7 +18,7 @@ import time
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from obzerve import attributes as attrs
@@ -101,7 +101,7 @@ def run_eval(
     data = client.dataset(dataset, include_bundles=True)
     if not data["cases"]:
         raise ValueError(f"dataset {dataset!r} has no active cases")
-    started = datetime.now(UTC)
+    started = datetime.now(timezone.utc)
     run_id = str(uuid.uuid4())
     replay_attrs: dict[str, Any] = {attrs.EVAL_RUN_ID: run_id}
     if prompt_version:
@@ -150,7 +150,7 @@ def run_eval(
             "prompt_version_id": prompt_version["id"] if prompt_version else None,
             "config": config or {},
             "started_at": started.isoformat(),
-            "finished_at": datetime.now(UTC).isoformat(),
+            "finished_at": datetime.now(timezone.utc).isoformat(),
             "results": results,
         }
     )

@@ -1,0 +1,139 @@
+# Publishes the `obzerve` SDK to TestPyPI, then PyPI, when a tag `sdk-vX.Y.Z` is pushed.
+# Uses PyPI Trusted Publishing (OIDC): no API tokens are stored in GitHub. One-time
+# setup on pypi.org / test.pypi.org is described in docs/publishing.md.
+# Running it manually (workflow_dispatch) builds and tests without publishing.
+name: Release SDK
+
+on:
+  push:
+    tags: ["sdk-v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build distributions
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.12.9"
+
+      - name: Read the package version
+        id: version
+        run: |
+          version=$(sed -n 's/^__version__ = "\(.*\)"$/\1/p' sdk/python/src/obzerve/_version.py)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Package version: $version"
+
+      - name: The tag matches the package version
+        if: startsWith(github.ref, 'refs/tags/sdk-v')
+        env:
+          TAG: ${{ github.ref_name }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          if [ "$TAG" != "sdk-v$VERSION" ]; then
+            echo "::error::Tag $TAG does not match package version $VERSION"
+            exit 1
+          fi
+
+      - name: The packaged license is the repository's
+        run: cmp LICENSE sdk/python/LICENSE
+
+      - name: Build
+        run: uv build --package obzerve -o dist
+
+      - name: Check metadata as PyPI will
+        run: uvx twine check --strict dist/*
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
+
+  test:
+    name: Test wheel (Python ${{ matrix.python }}, ${{ matrix.deps }} deps)
+    needs: build
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        include:
+          - { python: "3.10", deps: minimum }
+          - { python: "3.13", deps: latest }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.12.9"
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - name: Install the wheel into a fresh environment and run the SDK tests
+        run: tools/test_sdk_wheel.sh "${{ matrix.python }}" "${{ matrix.deps }}" dist/*.whl
+
+  publish-testpypi:
+    name: Publish to TestPyPI
+    if: startsWith(github.ref, 'refs/tags/sdk-v')
+    needs: [build, test]
+    runs-on: ubuntu-24.04
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/project/obzerve/${{ needs.build.outputs.version }}/
+    permissions:
+      id-token: write  # Trusted Publishing
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+
+  publish-pypi:
+    name: Publish to PyPI
+    if: startsWith(github.ref, 'refs/tags/sdk-v')
+    needs: [build, publish-testpypi]
+    runs-on: ubuntu-24.04
+    # Add required reviewers to this environment (repo Settings -> Environments) to
+    # approve each release by hand before it reaches PyPI.
+    environment:
+      name: pypi
+      url: https://pypi.org/project/obzerve/${{ needs.build.outputs.version }}/
+    permissions:
+      id-token: write  # Trusted Publishing
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
+
+  github-release:
+    name: GitHub release
+    if: startsWith(github.ref, 'refs/tags/sdk-v')
+    needs: [build, publish-pypi]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - name: Create the release with the distributions attached
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          VERSION: ${{ needs.build.outputs.version }}
+        run: >-
+          gh release create "$TAG" dist/* --repo "$GITHUB_REPOSITORY"
+          --title "obzerve $VERSION (Python SDK)"
+          --notes "Install: \`pip install obzerve==$VERSION\`. See sdk/python/CHANGELOG.md."

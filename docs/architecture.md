@@ -48,6 +48,16 @@ Measured on one machine (Ryzen 7 7800X3D), with one API process and PostgreSQL 1
 
 Before the executemany change, direct mode handled 65 req/s (p50 245 ms): about half of each request was spent recompiling multi-row INSERT statements.
 
+## Automatic instrumentation (SDK)
+
+`Observer.instrument()` (`sdk/python/src/obzerve/instrumentation/`) patches the request methods of supported client libraries at the class level: `openai` Chat Completions, Responses and Embeddings; `anthropic` `messages.create` and `messages.stream()`; `huggingface_hub` `InferenceClient.chat_completion` and `text_generation`; and `transformers` `GenerationMixin.generate` plus text-generation pipelines. Sync and async variants are both covered. `uninstrument()` restores the originals.
+
+- **Spans:** each call becomes an `llm` span inside the active trace, with OpenTelemetry GenAI attributes: operation, provider, request and response model, sampling settings, token usage including cached tokens, and finish reasons. An OpenAI client pointed at another server is recorded as `openai_compatible` with `server.address`. Anthropic's cache reads and writes are added to input tokens, and cache reads also go in the cached field, so cost uses the cache price.
+- **Replay:** non-streaming calls run through the same `_ReplayableCall` machinery as `@replayable`. The response is recorded as exact JSON and rebuilt as the library's own type (`ChatCompletion`, `Message`, `ChatCompletionOutput`, a `torch.Tensor`) during a replay. Streamed responses are wrapped in proxies that keep the span open until the stream is exhausted, closed or exited. They are traced but marked "not recorded for replay yet", so their traces read as partially replayable.
+- **Safety:** every attribute read is guarded, so an SDK change loses telemetry, never the user's call. `transformers` is only patched by default when it is already imported, because importing it loads PyTorch.
+
+The SDK is published to PyPI as `obzerve` (Apache-2.0, Python 3.10+). See [publishing.md](publishing.md).
+
 ## Replay
 
 Replay runs in the SDK, because only the agent's own process can re-execute its code. The server stores recordings and serves them back as *replay bundles*.
@@ -113,4 +123,4 @@ All other attributes are kept in `attributes` (JSONB). Events and resource attri
 | 1 | SDK, OTLP ingestion, PostgreSQL, trace list/detail UI, error and retry search, tenant scoping | **Done** |
 | 2 | Queue (Redis Streams) and workers, SDK delivery accounting, latency/error/token metrics, estimated cost with dated prices, Prometheus self-metrics, failure and load tests | **Done** |
 | 3 | Replay (recorded / LLM-live / live) with divergence detection and side-effect guards, trace-to-regression-case conversion, prompt versions, eval runs, comparison and release gate | **Done** |
-| 4 (in progress) | Done: CI (GitHub Actions), container images, compose deployment ([deployment.md](deployment.md)). Next: user accounts and login, reproducible demo walkthrough and docs, alerting (p95 / error rate / budget rules with windows and cooldowns) | |
+| 4 (in progress) | Done: CI (GitHub Actions), container images, compose deployment ([deployment.md](deployment.md)); SDK packaged for PyPI with automatic instrumentation for OpenAI, Anthropic and Hugging Face. Next: user accounts and login, reproducible demo walkthrough and docs, alerting (p95 / error rate / budget rules with windows and cooldowns) | |

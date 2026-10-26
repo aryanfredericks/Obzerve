@@ -68,6 +68,28 @@ jobs:
       - name: Tests
         run: uv run --no-sync pytest -rs
 
+  sdk:
+    name: SDK wheel (Python ${{ matrix.python }}, ${{ matrix.deps }} deps)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { python: "3.10", deps: minimum }
+          - { python: "3.13", deps: latest }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.12.9"
+          enable-cache: true
+      - name: Build, check metadata, install into a fresh environment, run the SDK tests
+        run: |
+          uv build --package obzerve -o dist
+          uvx twine check --strict dist/*
+          tools/test_sdk_wheel.sh "${{ matrix.python }}" "${{ matrix.deps }}" dist/*.whl
+
   web:
     name: Dashboard (typecheck, build)
     runs-on: ubuntu-24.04
