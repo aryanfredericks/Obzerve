@@ -106,11 +106,7 @@ Install the SDK in the agent's project:
 pip install obzerve              # with extras for your clients, e.g. "obzerve[openai,anthropic]"
 ```
 
-`obzerve` is published to PyPI from this repository (see [docs/publishing.md](docs/publishing.md)). Until the first release is out, install it from GitHub:
-
-```bash
-pip install "obzerve @ git+https://github.com/aryanfredericks/Obzerve.git#subdirectory=sdk/python"
-```
+`obzerve` is published to [PyPI](https://pypi.org/project/obzerve/) from this repository (see [docs/publishing.md](docs/publishing.md)).
 
 Then wrap each request in a trace and turn on automatic instrumentation. Every call made through `openai`, `anthropic`, `huggingface_hub` or `transformers` becomes an LLM span, with model, provider and token usage, and is recorded for replay:
 

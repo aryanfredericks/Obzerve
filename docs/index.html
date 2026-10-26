@@ -1,0 +1,997 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Obzerve Docs</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Documentation for Obzerve, the self-hostable observability, replay and regression-testing platform for AI agents.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='6' fill='none' stroke='%235b5bd6' stroke-width='2.5'/%3E%3Ccircle cx='8' cy='8' r='2' fill='%235b5bd6'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: docs shell. Sticky top bar, sticky left contents rail, one reading column (~68ch).
+   Identity borrowed from the Obzerve dashboard: indigo accent, cool neutrals, span-kind colours. */
+:root {
+  --bg: #f6f6f9;
+  --surface: #ffffff;
+  --surface-2: #eeeff4;
+  --line: #dedfe8;
+  --fg: #191a23;
+  --muted: #5e6172;
+  --accent: #5151cc;
+  --accent-soft: #e9e9fb;
+  --code-bg: #f1f1f7;
+  --ok: #1d7f47;
+  --warn: #9a5b00;
+  --warn-soft: #fff3df;
+  --k-agent: #6d5bd0;
+  --k-tool: #c26b12;
+  --k-retrieval: #13896e;
+  --k-chain: #7d8392;
+  --k-llm: #2b7de9;
+  --k-handoff: #b8458f;
+  --tok-comment: #6b7080;
+  --tok-string: #1d7f47;
+  --tok-key: #5151cc;
+
+  --font-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  --step--1: 0.875rem;
+  --step-0: 1rem;
+  --step-1: 1.25rem;
+  --step-2: 1.6rem;
+  --step-3: 2.2rem;
+  --radius: 8px;
+  --bar-h: 56px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #101117; --surface: #171821; --surface-2: #20222d; --line: #2c2e3b;
+    --fg: #e8e9ef; --muted: #9ea1b2; --accent: #9393f6; --accent-soft: #25264a;
+    --code-bg: #1b1c26; --ok: #4cc27f; --warn: #f0a63a; --warn-soft: #3a2c14;
+    --k-agent: #9a8af0; --k-tool: #e59240; --k-retrieval: #38c29e; --k-chain: #9aa0ae;
+    --k-llm: #5aa1f5; --k-handoff: #e07ab9;
+    --tok-comment: #8a8ea0; --tok-string: #6fd39a; --tok-key: #a9a9fa;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #101117; --surface: #171821; --surface-2: #20222d; --line: #2c2e3b;
+  --fg: #e8e9ef; --muted: #9ea1b2; --accent: #9393f6; --accent-soft: #25264a;
+  --code-bg: #1b1c26; --ok: #4cc27f; --warn: #f0a63a; --warn-soft: #3a2c14;
+  --k-agent: #9a8af0; --k-tool: #e59240; --k-retrieval: #38c29e; --k-chain: #9aa0ae;
+  --k-llm: #5aa1f5; --k-handoff: #e07ab9;
+  --tok-comment: #8a8ea0; --tok-string: #6fd39a; --tok-key: #a9a9fa;
+  color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { scroll-padding-top: calc(var(--bar-h) + 16px + env(safe-area-inset-top, 0px)); }
+:root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 400 var(--step-0)/1.65 var(--font-body);
+  -webkit-text-size-adjust: 100%;
+}
+body::before {
+  content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px);
+  z-index: 30; background: var(--surface);
+}
+img, svg { max-width: 100%; }
+a { color: var(--accent); text-underline-offset: 2px; }
+a:hover { text-decoration-thickness: 2px; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+[hidden] { display: none !important; }
+.skip { position: absolute; left: -999px; top: 8px; background: var(--surface); padding: 8px 12px; z-index: 40; }
+.skip:focus { left: 16px; }
+
+/* ---------- top bar ---------- */
+.topbar {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20;
+  height: var(--bar-h);
+  display: flex; align-items: center; gap: 16px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+}
+.brand svg { flex-shrink: 0; }
+.icon-btn { white-space: nowrap; }
+.brand { display: flex; align-items: center; gap: 8px; color: var(--accent); text-decoration: none;
+  font: 700 1.15rem/1 var(--font-display); }
+.version { font: 600 0.72rem/1 var(--font-mono); color: var(--muted); border: 1px solid var(--line);
+  padding: 4px 7px; border-radius: 999px; }
+.topbar-links { margin-left: auto; display: flex; align-items: center; gap: 4px; }
+.topbar-links a, .icon-btn {
+  color: var(--muted); text-decoration: none; font-size: var(--step--1);
+  padding: 7px 10px; border-radius: 6px; border: 0; background: none; cursor: pointer; font-family: inherit;
+}
+.topbar-links a:hover, .icon-btn:hover { background: var(--surface-2); color: var(--fg); }
+.menu-btn { display: none; }
+
+/* ---------- shell ---------- */
+.shell {
+  display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 48px;
+  max-width: 1180px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.toc {
+  position: sticky; top: calc(var(--bar-h) + env(safe-area-inset-top, 0px));
+  align-self: start; max-height: calc(100vh - var(--bar-h)); overflow-y: auto;
+  padding-block: 28px 40px;
+}
+.toc h2 { font: 700 0.72rem/1 var(--font-body); letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--muted); margin: 22px 0 8px; }
+.toc h2:first-child { margin-top: 0; }
+.toc ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 1px; }
+.toc a { display: block; padding: 5px 10px; border-radius: 6px; color: var(--fg); text-decoration: none;
+  font-size: 0.94rem; line-height: 1.35; }
+.toc a:hover { background: var(--surface-2); }
+.toc a.active { background: var(--accent-soft); color: var(--accent); font-weight: 700; }
+
+main { min-width: 0; padding-block: 28px 80px; }
+.prose { max-width: 70ch; }
+
+/* ---------- hero ---------- */
+.hero { display: grid; gap: 22px; padding-bottom: 28px; border-bottom: 1px solid var(--line); margin-bottom: 8px; }
+.eyebrow { font: 700 0.75rem/1 var(--font-body); letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
+.hero h1 { font: 700 var(--step-3)/1.1 var(--font-display); margin: 0; text-wrap: balance; letter-spacing: -0.01em; max-width: 22ch; }
+.hero p.lede { font-size: 1.12rem; color: var(--muted); margin: 0; max-width: 62ch; }
+.hero-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.btn { display: inline-flex; align-items: center; gap: 8px; padding: 9px 14px; border-radius: 7px;
+  font-weight: 700; font-size: 0.95rem; text-decoration: none; border: 1px solid var(--line);
+  color: var(--fg); background: var(--surface); }
+.btn:hover { background: var(--surface-2); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+.btn.primary:hover { filter: brightness(1.08); background: var(--accent); }
+
+/* real trace, drawn to scale */
+.trace { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+.trace-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 16px;
+  padding: 10px 14px; border-bottom: 1px solid var(--line); font-size: var(--step--1); color: var(--muted); }
+.trace-head strong { color: var(--fg); }
+.trace-rows { overflow-x: auto; }
+.trace-row { display: grid; grid-template-columns: minmax(170px, 34%) 1fr; min-width: 520px;
+  border-bottom: 1px solid var(--line); font-size: 0.86rem; }
+.trace-row:last-child { border-bottom: 0; }
+.trace-label { display: flex; align-items: center; gap: 7px; padding: 6px 10px; border-right: 1px solid var(--line);
+  white-space: nowrap; overflow: hidden; }
+.trace-label .name { overflow: hidden; text-overflow: ellipsis; }
+.kind { font: 700 0.62rem/1 var(--font-mono); text-transform: uppercase; letter-spacing: 0.04em;
+  padding: 3px 5px; border-radius: 4px; border: 1px solid currentColor; flex-shrink: 0; }
+.trace-track { position: relative; margin: 0 12px; min-height: 30px; }
+.trace-bar { position: absolute; top: 50%; height: 11px; transform: translateY(-50%); border-radius: 3px; min-width: 3px; }
+.trace-dur.inside { color: var(--surface); font-weight: 600; }
+.trace-dur { position: absolute; top: 50%; transform: translateY(-50%); font: 400 0.72rem/1 var(--font-mono);
+  color: var(--muted); white-space: nowrap; }
+.k-agent { color: var(--k-agent); } .bg-agent { background: var(--k-agent); }
+.k-tool { color: var(--k-tool); } .bg-tool { background: var(--k-tool); }
+.k-retrieval { color: var(--k-retrieval); } .bg-retrieval { background: var(--k-retrieval); }
+.k-chain { color: var(--k-chain); } .bg-chain { background: var(--k-chain); }
+.k-llm { color: var(--k-llm); } .bg-llm { background: var(--k-llm); }
+.k-handoff { color: var(--k-handoff); } .bg-handoff { background: var(--k-handoff); }
+
+/* ---------- sections ---------- */
+section.doc { padding-top: 40px; }
+section.doc + section.doc { border-top: 1px solid var(--line); margin-top: 40px; }
+h2.sec { font: 700 var(--step-2)/1.2 var(--font-display); margin: 0 0 6px; text-wrap: balance; letter-spacing: -0.005em; }
+.sec-kicker { color: var(--muted); margin: 0 0 18px; max-width: 64ch; }
+h3 { font: 700 var(--step-1)/1.3 var(--font-display); margin: 30px 0 8px; text-wrap: balance; }
+h4 { font: 700 1rem/1.4 var(--font-body); margin: 22px 0 6px; }
+p { margin: 0 0 14px; }
+ul.list, ol.list { margin: 0 0 16px; padding-left: 22px; display: grid; gap: 6px; }
+strong { font-weight: 700; }
+code { font: 400 0.86em/1.5 var(--font-mono); background: var(--code-bg); padding: 1px 5px; border-radius: 4px; }
+kbd { font: 400 0.82em var(--font-mono); border: 1px solid var(--line); border-bottom-width: 2px; padding: 0 5px; border-radius: 4px; background: var(--surface); }
+
+/* path chooser */
+.paths { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin: 6px 0 8px; }
+.path { display: grid; gap: 6px; align-content: start; padding: 14px 16px; border: 1px solid var(--line);
+  border-radius: var(--radius); background: var(--surface); text-decoration: none; color: var(--fg); }
+.path:hover { border-color: var(--accent); }
+.path .goal { font-weight: 700; }
+.path .how { color: var(--muted); font-size: 0.93rem; }
+.path .go { font: 600 0.8rem/1 var(--font-mono); color: var(--accent); margin-top: 4px; }
+
+/* code blocks */
+.code { position: relative; margin: 0 0 18px; background: var(--code-bg); border: 1px solid var(--line);
+  border-radius: var(--radius); }
+.code .lang { position: absolute; top: 8px; left: 12px; font: 600 0.68rem/1 var(--font-mono);
+  text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+.code pre { margin: 0; padding: 30px 14px 14px; overflow-x: auto; font: 400 0.84rem/1.6 var(--font-mono); tab-size: 4; }
+.code pre code { background: none; padding: 0; font-size: inherit; }
+.copy { position: absolute; top: 6px; right: 6px; font: 600 0.72rem/1 var(--font-body); color: var(--muted);
+  background: var(--surface); border: 1px solid var(--line); border-radius: 5px; padding: 5px 8px; cursor: pointer; }
+.copy:hover { color: var(--fg); }
+.t-c { color: var(--tok-comment); font-style: italic; }
+.t-s { color: var(--tok-string); }
+.t-k { color: var(--tok-key); font-weight: 600; }
+
+/* tables */
+.table-wrap { overflow-x: auto; margin: 0 0 18px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 0.92rem; }
+th, td { text-align: left; vertical-align: top; padding: 9px 12px; border-bottom: 1px solid var(--line); }
+tr:last-child td { border-bottom: 0; }
+thead th { background: var(--surface-2); font-size: 0.8rem; color: var(--muted); font-weight: 700; white-space: nowrap; }
+td code { white-space: nowrap; }
+td.wrap code { white-space: normal; word-break: break-word; }
+
+/* callouts */
+.note { border: 1px solid var(--line); border-left: 4px solid var(--accent); background: var(--surface);
+  border-radius: var(--radius); padding: 12px 16px; margin: 0 0 18px; }
+.note.warn { border-left-color: var(--warn); background: var(--warn-soft); }
+.note p:last-child { margin-bottom: 0; }
+.note .label { display: block; font: 700 0.74rem/1 var(--font-body); letter-spacing: 0.07em; text-transform: uppercase;
+  color: var(--accent); margin-bottom: 6px; }
+.note.warn .label { color: var(--warn); }
+
+/* steps: a real sequence, so numbered */
+ol.steps { list-style: none; counter-reset: step; padding: 0; margin: 0 0 18px; display: grid; gap: 16px; }
+ol.steps > li { counter-increment: step; display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 12px; }
+ol.steps > li::before { content: counter(step); width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center;
+  font: 700 0.82rem/1 var(--font-mono); color: var(--accent); background: var(--accent-soft); }
+ol.steps > li > div { min-width: 0; }
+ol.steps .code { margin-bottom: 0; margin-top: 8px; }
+
+.pill { display: inline-block; font: 700 0.7rem/1 var(--font-mono); padding: 3px 7px; border-radius: 999px;
+  background: var(--accent-soft); color: var(--accent); vertical-align: middle; }
+
+footer { border-top: 1px solid var(--line); margin-top: 60px; padding-top: 20px; color: var(--muted); font-size: var(--step--1);
+  display: flex; flex-wrap: wrap; gap: 8px 20px; }
+
+/* ---------- narrow screens ---------- */
+@media (max-width: 900px) {
+  .shell { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .menu-btn { display: inline-flex; }
+  .toc { position: fixed; z-index: 15; inset: calc(var(--bar-h) + env(safe-area-inset-top, 0px)) 0 0 0;
+    max-height: none; background: var(--surface); border-top: 1px solid var(--line);
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+    display: none; }
+  .toc.open { display: block; }
+  .topbar-links .hide-sm { display: none; }
+  .topbar { gap: 10px; }
+  td code { white-space: normal; overflow-wrap: anywhere; }
+  td:first-child code { white-space: normal; overflow-wrap: normal; }  /* wrap at spaces, keep identifiers whole */
+  :root { --step-3: 1.8rem; --step-2: 1.4rem; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  html { scroll-behavior: smooth; }
+}
+</style>
+</head>
+<body>
+<a class="skip" href="#content">Skip to content</a>
+
+<header class="topbar">
+  <button class="icon-btn menu-btn" id="menu-btn" aria-controls="toc" aria-expanded="false">Contents</button>
+  <a class="brand" href="#overview" aria-label="Obzerve docs home">
+    <svg width="20" height="20" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="2.5"/><circle cx="8" cy="8" r="2" fill="currentColor"/></svg>
+    Obzerve
+  </a>
+  <span class="version" title="Documentation for this version">v0.1.0</span>
+  <nav class="topbar-links" aria-label="External links">
+    <a class="hide-sm" href="https://github.com/aryanfredericks/Obzerve">GitHub</a>
+    <a class="hide-sm" href="https://pypi.org/project/obzerve/">PyPI</a>
+    <button class="icon-btn" id="theme-btn" type="button" title="Colour theme" aria-label="Colour theme: system. Click to change."><span class="hide-sm">Theme: </span><span id="theme-name">system</span></button>
+  </nav>
+</header>
+
+<div class="shell">
+  <nav class="toc" id="toc" aria-label="Contents">
+    <h2>Start here</h2>
+    <ul>
+      <li><a href="#overview">What Obzerve is</a></li>
+      <li><a href="#paths">Pick your path</a></li>
+      <li><a href="#keys">API keys and the dev key</a></li>
+    </ul>
+    <h2>Use cases</h2>
+    <ul>
+      <li><a href="#local">Clone the repo and try it</a></li>
+      <li><a href="#sdk">Monitor your agent (pip install)</a></li>
+      <li><a href="#replay">Replay and regression tests</a></li>
+      <li><a href="#ci">Gate releases in CI</a></li>
+      <li><a href="#otel">Already using OpenTelemetry</a></li>
+      <li><a href="#selfhost">Self-host for a team</a></li>
+      <li><a href="#contribute">Develop Obzerve</a></li>
+    </ul>
+    <h2>Reference</h2>
+    <ul>
+      <li><a href="#dashboard">The dashboard</a></li>
+      <li><a href="#cost">Estimated cost</a></li>
+      <li><a href="#cli">Command-line tools</a></li>
+      <li><a href="#config">Configuration</a></li>
+      <li><a href="#troubleshooting">Troubleshooting</a></li>
+      <li><a href="#roadmap">What's next</a></li>
+    </ul>
+  </nav>
+
+  <main id="content">
+
+    <!-- ============ OVERVIEW ============ -->
+    <section id="overview" class="hero" aria-labelledby="overview-title">
+      <span class="eyebrow">Observability for AI agents · open source · self-hosted</span>
+      <h1 id="overview-title">See what your agent did, replay it, and stop it from happening again.</h1>
+      <p class="lede">Obzerve records every agent request as a trace of its LLM calls, tool calls, retrieval and handoffs. You get latency, errors, tokens and estimated cost for each step. When a request goes wrong, you can replay it exactly, turn it into a regression test, and block the next release that breaks it.</p>
+      <div class="hero-actions">
+        <a class="btn primary" href="#paths">Pick your path</a>
+        <a class="btn" href="#sdk"><code>pip install obzerve</code></a>
+      </div>
+
+      <figure class="trace" style="margin:0" aria-label="Example trace waterfall">
+        <div class="trace-head">
+          <span><strong>research_agent</strong> · one real request · Qwen3 via Ollama</span>
+          <span>6.39 s · 8 spans · 556 / 379 tokens</span>
+        </div>
+        <div class="trace-rows" id="trace-rows"></div>
+      </figure>
+    </section>
+
+    <div class="prose">
+
+    <!-- ============ PATHS ============ -->
+    <section id="paths" class="doc" aria-labelledby="paths-title">
+      <h2 class="sec" id="paths-title">Pick your path</h2>
+      <p class="sec-kicker">Each section below is self-contained. Find the sentence that matches what you want to do.</p>
+      <div class="paths">
+        <a class="path" href="#local"><span class="goal">I want to try Obzerve</span><span class="how">Clone the repo, start everything in containers, and run the demo agent through a failure and its fix.</span><span class="go">→ Clone the repo</span></a>
+        <a class="path" href="#sdk"><span class="goal">I want to monitor my own agent</span><span class="how">Install the SDK in your project and turn on automatic tracing for OpenAI, Anthropic and Hugging Face.</span><span class="go">→ pip install obzerve</span></a>
+        <a class="path" href="#replay"><span class="goal">I want to turn failures into tests</span><span class="how">Replay a recorded request, make it a regression case, and compare candidates.</span><span class="go">→ Replay and regression tests</span></a>
+        <a class="path" href="#otel"><span class="goal">My app already emits OpenTelemetry</span><span class="how">Point your OTLP exporter at Obzerve. No SDK needed for monitoring.</span><span class="go">→ OpenTelemetry</span></a>
+        <a class="path" href="#selfhost"><span class="goal">I want to run it for my team</span><span class="how">Deploy the container stack with your own keys, TLS and scaled workers.</span><span class="go">→ Self-host</span></a>
+        <a class="path" href="#contribute"><span class="goal">I want to change Obzerve</span><span class="how">Development setup with hot reload, tests and the same checks as CI.</span><span class="go">→ Develop Obzerve</span></a>
+      </div>
+      <p>Every path needs a running Obzerve server, the API and the dashboard. If you don't have one yet, start with <a href="#local">Clone the repo and try it</a>. It takes one command.</p>
+    </section>
+
+    <!-- ============ KEYS ============ -->
+    <section id="keys" class="doc" aria-labelledby="keys-title">
+      <h2 class="sec" id="keys-title">API keys and the dev key</h2>
+      <p class="sec-kicker">Version 0.1.0 has no user accounts yet. Everything authenticates with a <strong>project API key</strong>, and local setups come with a ready-made one.</p>
+
+      <h3>The dev key</h3>
+      <p><code>make stack-demo</code> and <code>make bootstrap</code> create a project called <code>demo</code> with the key <strong><code>dev_project_key</code></strong>. That key has every scope, so you can use it right away for:</p>
+      <ul class="list">
+        <li>sending traces from the SDK or the demo agent,</li>
+        <li>the dashboard (<code>make stack-demo</code> builds the key into it),</li>
+        <li>the <code>obzerve</code> CLI: <code>export OBZERVE_API_KEY=dev_project_key</code>.</li>
+      </ul>
+      <div class="note warn">
+        <span class="label">Local only</span>
+        <p>The dev key is public: it's written in this page and in the repository. Use it on your own machine only. Anything reachable by other people needs its own project keys, created as shown below.</p>
+      </div>
+
+      <h3>Project keys</h3>
+      <p>Each project keeps its traces, datasets and prices separate. A key belongs to one project and carries scopes:</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Scope</th><th>Allows</th><th>Give it to</th></tr></thead>
+        <tbody>
+          <tr><td><code>ingest</code></td><td>Sending traces (<code>POST /v1/traces</code>)</td><td>Agents in production</td></tr>
+          <tr><td><code>read</code></td><td>The dashboard and query API: traces, metrics, replay bundles</td><td>People viewing the dashboard</td></tr>
+          <tr><td><code>write</code></td><td>Registering prompt versions, creating regression cases, submitting eval runs</td><td>CI pipelines, engineers running evals</td></tr>
+        </tbody>
+      </table></div>
+      <div class="code"><span class="lang">bash</span><pre><code data-lang="bash"># containers: run inside the API container
+podman compose --profile stack exec api obzerve-server create-project my-app
+# development setup
+uv run obzerve-server create-project my-app
+
+# another key for the same project, e.g. ingest-only for production
+uv run obzerve-server create-key my-app --scopes ingest</code></pre></div>
+      <p>The key is printed once. Only a hash is stored, so keep it somewhere safe.</p>
+      <ul class="list">
+        <li><strong>SDK:</strong> pass it as <code>api_key=</code>.</li>
+        <li><strong>CLI:</strong> set it as <code>OBZERVE_API_KEY</code>.</li>
+        <li><strong>Dashboard:</strong> enter it under <strong>API key</strong> in the top bar. It's stored in your browser.</li>
+      </ul>
+      <p>Requests send the key as <code>Authorization: Bearer &lt;key&gt;</code> or as <code>X-API-Key: &lt;key&gt;</code>.</p>
+      <p>User accounts and login are planned for <a href="#roadmap">0.1.1</a>.</p>
+    </section>
+
+    <!-- ============ LOCAL ============ -->
+    <section id="local" class="doc" aria-labelledby="local-title">
+      <h2 class="sec" id="local-title">Clone the repo and try it</h2>
+      <p class="sec-kicker">The fastest way to see Obzerve working: the whole platform in containers, plus a demo research agent that fails and gets fixed. It works offline with a built-in mock LLM, in about 15 minutes.</p>
+
+      <h3>What you need</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Tool</th><th>Check</th><th>Used for</th></tr></thead>
+        <tbody>
+          <tr><td>Git</td><td><code>git --version</code></td><td>Getting the code</td></tr>
+          <tr><td>Docker <em>or</em> Podman, with Compose</td><td><code>docker compose version</code></td><td>Running the platform</td></tr>
+          <tr><td><a href="https://docs.astral.sh/uv/getting-started/installation/">uv</a></td><td><code>uv --version</code></td><td>The demo agent and CLI</td></tr>
+          <tr><td>make</td><td><code>make --version</code></td><td>Shortcuts (each target is a plain command in the <code>Makefile</code>)</td></tr>
+        </tbody>
+      </table></div>
+      <p>The demo agent installs PyTorch (about 4 GB) for its retrieval step. It uses an AMD GPU through ROCm when one is present, and otherwise falls back to the CPU.</p>
+
+      <h3>Start the platform</h3>
+      <ol class="steps">
+        <li><div><strong>Get the code and start everything.</strong> The first build takes a few minutes.
+          <div class="code"><span class="lang">bash</span><pre><code data-lang="bash">git clone https://github.com/aryanfredericks/Obzerve.git
+cd Obzerve
+make stack-demo     # PostgreSQL, Redis, API, worker, dashboard + the dev key</code></pre></div></div></li>
+        <li><div><strong>Check it is healthy</strong>, then open <a href="http://localhost:8080">localhost:8080</a>.
+          <div class="code"><span class="lang">bash</span><pre><code data-lang="bash">curl http://localhost:8000/readyz
+# {"status":"ok","database":"ok","queue":"ok"}</code></pre></div></div></li>
+        <li><div><strong>Point the tools at it</strong> in every terminal you use:
+          <div class="code"><span class="lang">bash</span><pre><code data-lang="bash">export OBZERVE_ENDPOINT=http://localhost:8000
+export OBZERVE_API_KEY=dev_project_key
+export OBZERVE_DASHBOARD_URL=http://localhost:8080</code></pre></div></div></li>
+      </ol>
+
+      <h3>Watch a failure, then fix it</h3>
+      <ol class="steps">
+        <li><div><strong>Run the agent normally, and once with every LLM call failing.</strong> The failing run prints <code>run failed: … (simulated timeout, injected fault)</code>; that's expected.
+          <div class="code"><span class="lang">bash</span><pre><code data-lang="bash">uv sync    # first time only: installs the demo agent
+TRACE_OK=$(uv run research-agent --quiet | grep -oP 'traces/\K[0-9a-f]{32}')
+TRACE_FAIL=$(uv run research-agent --fault llm-outage --quiet | grep -oP 'traces/\K[0-9a-f]{32}')
+echo "$OBZERVE_DASHBOARD_URL/traces/$TRACE_FAIL"</code></pre></div>
+          <p style="margin:8px 0 0">The trace page shows the timeline, three failed LLM attempts with their retries, and a callout naming the root cause.</p></div></li>
+        <li><div><strong>Replay it.</strong> Every step is served from the recording, so the failure happens again exactly and nothing is called. Then replay the same recording with a fix:
+          <div class="code"><span class="lang">bash</span><pre><code data-lang="bash">uv run research-agent replay "$TRACE_FAIL" --mode recorded --quiet   # fails the same way
+uv run research-agent replay "$TRACE_FAIL" --mode recorded --fallback # now degrades gracefully</code></pre></div></div></li>
+        <li><div><strong>Make both traces regression cases, then compare baseline and fix:</strong>
+          <div class="code"><span class="lang">bash</span><pre><code data-lang="bash">uv run obzerve case add "$TRACE_FAIL" --dataset getting-started \
+    --name "LLM outage degrades gracefully" --mode recorded --no-error --contains-any unavailable
+uv run obzerve case add "$TRACE_OK" --dataset getting-started \
+    --name "Answers the question" --no-error --contains-any evaluation
+
+BASE=$(uv run research-agent eval getting-started --label baseline | grep -oP '^run: \K\S+')
+FIX=$(uv run research-agent eval getting-started --label "fallback fix" --fallback | grep -oP '^run: \K\S+')
+uv run obzerve eval gate "$BASE" "$FIX" --min-pass-rate 1.0   # GATE PASSED, exit 0
+uv run obzerve eval gate "$FIX" "$BASE"                       # GATE FAILED, exit 1</code></pre></div></div></li>
+      </ol>
+      <p>Other failures to try with <code>--fault</code>:</p>
+      <ul class="list">
+        <li><code>llm-timeout</code>: recovers after retries.</li>
+        <li><code>bad-retrieval</code>: every step "succeeds", but the evidence is irrelevant.</li>
+        <li><code>search-error</code>: a tool fails and the agent carries on without it.</li>
+      </ul>
+      <p>Add <code>--llm ollama</code> to use a real local model (see <a href="#troubleshooting">Troubleshooting</a> for Qwen3 settings).</p>
+      <div class="note">
+        <span class="label">Stop everything</span>
+        <p><code>make stack-down</code> stops every Obzerve container, including extra workers. Your data stays in the <code>obzerve-pgdata</code> volume. The full walkthrough, with expected output for each step, is in <a href="https://github.com/aryanfredericks/Obzerve/blob/main/docs/getting-started.md">docs/getting-started.md</a>.</p>
+      </div>
+    </section>
+
+    <!-- ============ SDK ============ -->
+    <section id="sdk" class="doc" aria-labelledby="sdk-title">
+      <h2 class="sec" id="sdk-title">Monitor your agent with <code>pip install obzerve</code></h2>
+      <p class="sec-kicker">Add the SDK to your own project. Wrap each request in a trace, and every model call made through a supported client library is traced automatically.</p>
+
+      <h3>Install</h3>
+      <div class="code"><span class="lang">bash</span><pre><code data-lang="bash">pip install obzerve                       # or: uv add obzerve
+pip install "obzerve[openai,anthropic]"   # with the client libraries you use
+# extras: openai, anthropic, huggingface, transformers, all</code></pre></div>
+      <p>You need Python 3.10 or newer and an Obzerve server (<a href="#local">run one locally</a> or <a href="#selfhost">self-host</a>). You also need a project key; on your own machine, the <a href="#keys">dev key</a> works.</p>
+
+      <h3>Trace a request</h3>
+      <div class="code"><span class="lang">python</span><pre><code data-lang="python">from obzerve import Observer
+
+observer = Observer(
+    endpoint="http://localhost:8000",
+    api_key="dev_project_key",          # a project key outside local development
+    service_name="support-bot",
+)
+observer.instrument()                   # trace OpenAI, Anthropic and Hugging Face calls
+
+def handle(ticket: str) -> str:
+    with observer.trace("support_bot", input={"ticket": ticket}) as trace:
+        answer = run_my_agent(ticket)   # every LLM call inside becomes a span of this trace
+        trace.set_output(answer)
+        return answer</code></pre></div>
+      <p>Open the dashboard: each call to <code>handle</code> is one trace.</p>
+
+      <h3>What is traced automatically</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Library</th><th>Covered</th></tr></thead>
+        <tbody>
+          <tr><td><code>openai</code></td><td>Chat Completions, Responses and Embeddings: sync, async and streaming. OpenAI-compatible servers (vLLM, Ollama, TGI, LM Studio) are recorded as <code>openai_compatible</code>, with their address.</td></tr>
+          <tr><td><code>anthropic</code></td><td><code>messages.create</code> (including <code>stream=True</code>) and <code>messages.stream()</code>, sync and async. Prompt-cache reads are counted as cached tokens.</td></tr>
+          <tr><td><code>huggingface_hub</code></td><td><code>InferenceClient.chat_completion</code>, also reached as <code>client.chat.completions.create</code>, and <code>text_generation</code>. Covers the hosted Inference API, Inference Endpoints and self-hosted TGI.</td></tr>
+          <tr><td><code>transformers</code></td><td><code>generate()</code> on any local model (model, device, prompt and generated tokens) and text-generation pipelines.</td></tr>
+        </tbody>
+      </table></div>
+      <p>Each model call records:</p>
+      <ul class="list">
+        <li>model and provider,</li>
+        <li>sampling settings,</li>
+        <li>input, output and cached tokens,</li>
+        <li>finish reason,</li>
+        <li>the prompt and response (redacted).</li>
+      </ul>
+      <p>Choose libraries explicitly with <code>observer.instrument(openai=True, anthropic=False)</code>. Undo it with <code>handle = observer.instrument(); handle.uninstrument()</code>.</p>
+      <p><code>transformers</code> loads PyTorch on import, so by default it's instrumented only if your code has already imported it. Pass <code>transformers=True</code> to force it.</p>
+      <div class="note">
+        <span class="label">Safe by default</span>
+        <ul class="list" style="margin:0">
+          <li><strong>Your call never breaks:</strong> if a library changes shape, the trace loses detail but the request still succeeds.</li>
+          <li><strong>Telemetry never blocks:</strong> it's sent in the background through a bounded buffer. If the server is down, spans are dropped instead of blocking your agent. <code>observer.stats()</code> shows exactly how many were sent, failed or dropped.</li>
+          <li><strong>Secrets are redacted:</strong> values such as <code>api_key</code>, <code>password</code> and bearer tokens. Turn payload capture off entirely with <code>Observer(capture_payloads=False)</code>.</li>
+        </ul>
+      </div>
+      <p>Streamed responses are one span that stays open until you finish reading the stream, close it, or leave its <code>with</code> block. Close streams you abandon early.</p>
+
+      <h3>Your own tools and steps</h3>
+      <div class="code"><span class="lang">python</span><pre><code data-lang="python">from obzerve import SpanKind
+
+with observer.span("search_orders", kind=SpanKind.TOOL, input={"customer": cid}) as span:
+    orders = orders_api.search(cid)
+    span.set_output(orders)
+
+@observer.observe(kind=SpanKind.RETRIEVAL)     # decorator form, sync or async
+def retrieve(query: str) -> list[str]: ...
+
+# a model call the instrumentation doesn't cover
+with observer.span("llm.generate", kind=SpanKind.LLM) as span:
+    reply = my_client.generate(prompt)
+    span.set_llm(model="my-model", provider="acme", input_tokens=812, output_tokens=95)</code></pre></div>
+      <ul class="list">
+        <li><strong>Errors:</strong> an exception inside a span marks it as failed and records the error type and message.</li>
+        <li><strong>Retries:</strong> <code>span.record_retry(attempt, exc)</code> records each retry.</li>
+        <li><strong>Across services:</strong> <code>observer.inject_headers()</code> on the caller and <code>observer.trace(..., parent_headers=headers)</code> on the callee join both sides into one trace.</li>
+      </ul>
+      <p>The <a href="https://github.com/aryanfredericks/Obzerve/blob/main/sdk/python/README.md">SDK README</a> lists every option.</p>
+    </section>
+
+    <!-- ============ REPLAY ============ -->
+    <section id="replay" class="doc" aria-labelledby="replay-title">
+      <h2 class="sec" id="replay-title">Replay and regression tests</h2>
+      <p class="sec-kicker">Reproduce a production request exactly, without calling any model or tool. Then keep it as a test that every future change must pass.</p>
+
+      <h3>Make steps replayable</h3>
+      <p>Calls through the <a href="#sdk">instrumented libraries</a> are recorded automatically. For your own tools, use <code>@observer.replayable</code>. Mark anything that changes the outside world as a side effect: a replay never runs it again.</p>
+      <div class="code"><span class="lang">python</span><pre><code data-lang="python">@observer.replayable(kind=SpanKind.TOOL)
+def lookup_order(order_id: str) -> dict: ...
+
+@observer.replayable(kind=SpanKind.TOOL, side_effect=True)   # never re-run by a replay
+def refund(order_id: str) -> None: ...
+
+# custom types need encode/decode to and from JSON
+@observer.replayable(kind=SpanKind.RETRIEVAL,
+                     encode=lambda docs: [d.to_dict() for d in docs],
+                     decode=lambda data: [Doc(**d) for d in data])
+def retrieve(query: str) -> list[Doc]: ...</code></pre></div>
+      <p>Each trace is labelled <strong>replayable</strong>, <strong>partially replayable</strong> or <strong>not replayable</strong>. The trace page says why.</p>
+
+      <h3>Replay a trace</h3>
+      <div class="code"><span class="lang">python</span><pre><code data-lang="python">from obzerve.client import ObzerveClient
+from obzerve.replay import RECORDED, LLM_LIVE
+
+client = ObzerveClient("http://localhost:8000", "dev_project_key")
+bundle = client.replay_bundle(trace_id)
+
+with observer.replay(bundle, RECORDED):        # nothing external is called
+    handle(**bundle.root_input)                # the replay is linked to the original trace</code></pre></div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Policy</th><th>Runs live</th><th>Use it to</th></tr></thead>
+        <tbody>
+          <tr><td><code>RECORDED</code></td><td>Nothing</td><td>Reproduce the request exactly, including its failures</td></tr>
+          <tr><td><code>LLM_LIVE</code></td><td>Model calls</td><td>Test a new prompt or model against the recorded tool and retrieval results</td></tr>
+          <tr><td><code>LIVE</code></td><td>Everything except side effects</td><td>Check the whole workflow under current conditions</td></tr>
+        </tbody>
+      </table></div>
+      <p>If a replay calls a step with different inputs than the recording, the step is flagged as diverged. The dashboard compares the original and the replay step by step.</p>
+      <p>Streamed responses are traced but not recorded yet. A <code>RECORDED</code> replay that reaches one stops with a clear error.</p>
+
+      <h3>Turn it into a regression case</h3>
+      <p>Use <strong>Turn into a regression case…</strong> on the trace page, or the CLI:</p>
+      <div class="code"><span class="lang">bash</span><pre><code data-lang="bash">obzerve case add &lt;trace_id&gt; --dataset regressions --name "refund flow" \
+    --mode recorded --no-error --contains-any refunded</code></pre></div>
+      <p>A case keeps a frozen copy of the trace's recordings, so it outlives the trace. Each case has its own mode:</p>
+      <ul class="list">
+        <li><code>recorded</code>: a failure that must reproduce exactly.</li>
+        <li><code>llm-live</code>: checks on answer quality.</li>
+      </ul>
+      <p>Assertions are deterministic:</p>
+      <ul class="list">
+        <li><code>--no-error</code></li>
+        <li><code>--contains-all</code>, <code>--contains-any</code>, <code>--not-contains</code></li>
+        <li><code>--regex</code></li>
+        <li><code>--max-latency-ms</code></li>
+      </ul>
+
+      <h3>Run a dataset against a change</h3>
+      <div class="code"><span class="lang">python</span><pre><code data-lang="python">from obzerve.evals import run_eval
+
+prompt = client.register_prompt("support-bot", {"system": SYSTEM_PROMPT, "model": "gpt-x"})
+run = run_eval(
+    observer, client, "regressions",
+    target=lambda root_input: handle(**root_input),   # your agent's entry point
+    label="new-system-prompt",
+    prompt_version=prompt,                             # recorded with the run
+)
+print("run:", run["run"]["id"], "pass rate", run["run"]["pass_rate"])</code></pre></div>
+      <p>Each run records the dataset version, evaluator version, prompt version and replay policy. Two runs are only marked comparable when all of those match.</p>
+    </section>
+
+    <!-- ============ CI ============ -->
+    <section id="ci" class="doc" aria-labelledby="ci-title">
+      <h2 class="sec" id="ci-title">Gate releases in CI</h2>
+      <p class="sec-kicker">Block a prompt, model or code change that makes a passing case fail. <code>obzerve eval gate</code> exits with 1 when the candidate doesn't meet your criteria.</p>
+      <div class="code"><span class="lang">yaml</span><pre><code data-lang="yaml"># .github/workflows/agent-evals.yml (excerpt)
+- run: pip install obzerve
+- name: Evaluate the candidate
+  env:
+    OBZERVE_ENDPOINT: ${{ secrets.OBZERVE_ENDPOINT }}
+    OBZERVE_API_KEY: ${{ secrets.OBZERVE_API_KEY }}   # a key with read + write scopes
+  run: |
+    CANDIDATE=$(python evals/run.py --label "$GITHUB_SHA")   # prints the run id
+    obzerve eval gate "${{ vars.BASELINE_RUN }}" "$CANDIDATE" \
+        --max-regressions 0 --max-pass-rate-drop 0</code></pre></div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Option</th><th>Fails when</th></tr></thead>
+        <tbody>
+          <tr><td><code>--max-regressions N</code></td><td>More than N cases that passed in the baseline fail now (default 0)</td></tr>
+          <tr><td><code>--min-pass-rate R</code></td><td>The candidate's pass rate is below R (0–1)</td></tr>
+          <tr><td><code>--max-pass-rate-drop R</code></td><td>The pass rate fell by more than R</td></tr>
+          <tr><td><code>--max-cost-increase-pct P</code></td><td>Estimated cost per case rose by more than P percent</td></tr>
+          <tr><td><code>--max-p95-latency-increase-pct P</code></td><td>p95 latency rose by more than P percent</td></tr>
+        </tbody>
+      </table></div>
+      <p>Runs that aren't comparable (a different dataset version, evaluator or replay policy) always fail the gate. <code>obzerve eval compare A B</code> prints the same comparison without failing. The dashboard has it too: under <strong>Evals</strong>, tick two runs and choose <strong>Compare selected</strong>.</p>
+    </section>
+
+    <!-- ============ OTEL ============ -->
+    <section id="otel" class="doc" aria-labelledby="otel-title">
+      <h2 class="sec" id="otel-title">Already using OpenTelemetry</h2>
+      <p class="sec-kicker">Obzerve accepts standard OTLP/HTTP traces, so any OpenTelemetry-instrumented app can send to it without the SDK.</p>
+      <div class="code"><span class="lang">bash</span><pre><code data-lang="bash">export OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://localhost:8000/v1/traces
+export OTEL_EXPORTER_OTLP_TRACES_HEADERS="x-api-key=dev_project_key"
+export OTEL_EXPORTER_OTLP_TRACES_PROTOCOL=http/protobuf</code></pre></div>
+      <ul class="list">
+        <li><strong>Formats:</strong> protobuf or JSON, optionally gzip-compressed.</li>
+        <li><strong>Model data:</strong> spans that use the OpenTelemetry GenAI conventions (<code>gen_ai.request.model</code>, <code>gen_ai.usage.input_tokens</code>, …) get model, token and cost figures.</li>
+        <li><strong>Retries are safe:</strong> invalid spans are rejected one at a time, and re-sending a batch never double-counts.</li>
+      </ul>
+      <p><strong>Replay needs the SDK.</strong> Plain traces don't record results exactly, so those traces are marked not replayable.</p>
+      <p>If you also send the Anthropic SDK's own OpenTelemetry spans to Obzerve while using <code>observer.instrument()</code>, turn one of them off (<code>Anthropic(open_telemetry=False)</code>). Otherwise each call appears twice.</p>
+    </section>
+
+    <!-- ============ SELF-HOST ============ -->
+    <section id="selfhost" class="doc" aria-labelledby="selfhost-title">
+      <h2 class="sec" id="selfhost-title">Self-host for a team</h2>
+      <p class="sec-kicker">The compose file in the repository runs the whole platform with Docker Compose or Podman Compose.</p>
+      <div class="code"><span class="lang">bash</span><pre><code data-lang="bash">git clone https://github.com/aryanfredericks/Obzerve.git &amp;&amp; cd Obzerve
+echo "OBZERVE_DB_PASSWORD=$(openssl rand -hex 24)" &gt; .env
+make stack                    # dashboard :8080, API :8000 (no dev key, no demo data)
+podman compose --profile stack exec api obzerve-server create-project my-team</code></pre></div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Service</th><th>Role</th></tr></thead>
+        <tbody>
+          <tr><td><code>postgres</code>, <code>redis</code></td><td>Storage, and the queue that buffers incoming telemetry</td></tr>
+          <tr><td><code>migrate</code></td><td>Applies database migrations, then exits; the API and workers wait for it</td></tr>
+          <tr><td><code>api</code></td><td>Receives traces (queue mode) and serves the dashboard's API</td></tr>
+          <tr><td><code>worker</code></td><td>Writes queued telemetry to the database; scale with <code>--scale worker=3</code></td></tr>
+          <tr><td><code>web</code></td><td>The dashboard, with <code>/api</code> proxied to the API</td></tr>
+        </tbody>
+      </table></div>
+      <h4>Before exposing it</h4>
+      <ul class="list">
+        <li>Put a TLS proxy (Caddy, Traefik or a load balancer) in front of <code>web</code> and <code>api</code>. Ports bind to <code>127.0.0.1</code> until you set <code>OBZERVE_API_BIND</code> or <code>OBZERVE_WEB_BIND</code>.</li>
+        <li>Change <code>OBZERVE_DB_PASSWORD</code>, and never set <code>OBZERVE_DASHBOARD_KEY</code> or use the dev key.</li>
+        <li>Keep <code>/metrics</code> (API) and port 9101 (workers) private. They're unauthenticated Prometheus endpoints.</li>
+      </ul>
+      <p><strong>Reliability:</strong> in queue mode, ingestion keeps working through database outages. When the backlog is full, clients get <code>503</code> with <code>Retry-After</code>, and nothing is lost. Workers scale linearly: in our test, one worker drained a 35k-trace backlog in 93 s, and three workers did it in 31 s.</p>
+      <p>Upgrades, backups and every setting are in <a href="https://github.com/aryanfredericks/Obzerve/blob/main/docs/deployment.md">docs/deployment.md</a>.</p>
+    </section>
+
+    <!-- ============ CONTRIBUTE ============ -->
+    <section id="contribute" class="doc" aria-labelledby="contribute-title">
+      <h2 class="sec" id="contribute-title">Develop Obzerve</h2>
+      <p class="sec-kicker">Run the API and dashboard from source with hot reload, plus PostgreSQL and Redis in containers. Needs Node.js 20+ in addition to the tools above.</p>
+      <div class="code"><span class="lang">bash</span><pre><code data-lang="bash">make setup        # Python packages (uv) and dashboard packages (npm)
+make db-up        # PostgreSQL + Redis
+make bootstrap    # migrations, the "demo" project and dev_project_key
+
+make server       # terminal 1: API on :8000, reloads on change
+make web          # terminal 2: dashboard on :5173
+
+make ci           # the same checks as GitHub CI: lint, migrations, tests, build
+make sdk-check    # build the SDK wheel and test it on Python 3.10 and 3.13</code></pre></div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Path</th><th>What it is</th></tr></thead>
+        <tbody>
+          <tr><td><code>sdk/python/</code></td><td>The <code>obzerve</code> package published to PyPI</td></tr>
+          <tr><td><code>server/</code></td><td>FastAPI ingestion and query API, queue worker, migrations, admin CLI</td></tr>
+          <tr><td><code>web/</code></td><td>React + TypeScript dashboard</td></tr>
+          <tr><td><code>examples/research_agent/</code></td><td>The demo agent: mock or Ollama LLM, GPU retrieval, injectable faults</td></tr>
+          <tr><td><code>docs/</code></td><td>Architecture, deployment, publishing, and this page</td></tr>
+        </tbody>
+      </table></div>
+      <p>The design, failure handling and benchmarks are in <a href="https://github.com/aryanfredericks/Obzerve/blob/main/docs/architecture.md">docs/architecture.md</a>. SDK releases are described in <a href="https://github.com/aryanfredericks/Obzerve/blob/main/docs/publishing.md">docs/publishing.md</a>.</p>
+    </section>
+
+    <!-- ============ DASHBOARD ============ -->
+    <section id="dashboard" class="doc" aria-labelledby="dashboard-title">
+      <h2 class="sec" id="dashboard-title">The dashboard</h2>
+      <p class="sec-kicker">Open it at <code>localhost:8080</code> (containers) or <code>localhost:5173</code> (development).</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Page</th><th>Shows</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Traces</strong></td><td>Every request, filterable by name, status, errors, retries and duration. Opening one shows the timeline, a detail panel for each step, the likely root cause, and the replay panel.</td></tr>
+          <tr><td><strong>Metrics</strong></td><td>Requests, error rate, p50/p95/p99 latency, estimated cost, tokens, LLM timeouts and tool success, over time and broken down by operation, model or workflow.</td></tr>
+          <tr><td><strong>Evals</strong></td><td>Datasets and their cases, eval runs, and run-versus-run comparison with an interactive release gate.</td></tr>
+          <tr><td><strong>Errors</strong></td><td>Failed operations grouped by error type, and operations that needed retries.</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <!-- ============ COST ============ -->
+    <section id="cost" class="doc" aria-labelledby="cost-title">
+      <h2 class="sec" id="cost-title">Estimated cost</h2>
+      <p class="sec-kicker">LLM calls are priced as they arrive, from a table of per-model prices in US dollars per million tokens. Costs are estimates, not invoices.</p>
+      <div class="code"><span class="lang">bash</span><pre><code data-lang="bash">uv run obzerve-server pricing set gpt-x --provider openai --input 2.50 --output 10 --cached-input 1.25
+uv run obzerve-server pricing set qwen3:latest --provider ollama --input 0 --output 0   # local: free
+uv run obzerve-server pricing list
+uv run obzerve-server pricing recompute        # re-price traces already stored</code></pre></div>
+      <ul class="list">
+        <li><strong>Effective dates:</strong> a price applies from its <code>--effective-from</code> date until a newer one.</li>
+        <li><strong>Overrides:</strong> a <code>--project</code> or <code>--provider</code> price wins over a general one.</li>
+        <li><strong>Unpriced calls:</strong> a call with tokens but no matching price is counted as unpriced, and the dashboard marks its total as partial.</li>
+      </ul>
+      <p>In containers, run the commands with <code>podman compose --profile stack exec api obzerve-server …</code>.</p>
+    </section>
+
+    <!-- ============ CLI ============ -->
+    <section id="cli" class="doc" aria-labelledby="cli-title">
+      <h2 class="sec" id="cli-title">Command-line tools</h2>
+      <h3><code>obzerve</code> <span class="pill">pip install obzerve</span></h3>
+      <p>Reads <code>OBZERVE_ENDPOINT</code> and <code>OBZERVE_API_KEY</code>. There's no default key.</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Command</th><th>Does</th></tr></thead>
+        <tbody>
+          <tr><td><code>obzerve case add TRACE</code></td><td>Turns a trace into a regression case. Requires <code>--dataset</code> and <code>--name</code>; optional <code>--mode</code>, <code>--notes</code> and assertion flags</td></tr>
+          <tr><td><code>obzerve eval compare BASE CAND</code></td><td>Prints the comparison of two eval runs</td></tr>
+          <tr><td><code>obzerve eval gate BASE CAND</code></td><td>The same comparison, plus exit code 1 when the criteria fail</td></tr>
+        </tbody>
+      </table></div>
+      <h3><code>obzerve-server</code> <span class="pill">from the repo</span></h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Command</th><th>Does</th></tr></thead>
+        <tbody>
+          <tr><td><code>serve</code> / <code>worker</code></td><td>Runs the API, or a queue worker</td></tr>
+          <tr><td><code>migrate</code> / <code>check-migrations</code></td><td>Applies migrations, or fails if the models changed without one</td></tr>
+          <tr><td><code>create-project NAME</code> / <code>create-key PROJECT</code></td><td>Creates a project with a key, or another key for it (<code>--scopes</code>)</td></tr>
+          <tr><td><code>pricing set|list|recompute</code></td><td>Manages model prices</td></tr>
+          <tr><td><code>queue status|requeue-dead</code></td><td>Shows the backlog, or retries dead-lettered messages</td></tr>
+        </tbody>
+      </table></div>
+      <h3><code>research-agent</code> <span class="pill">demo</span></h3>
+      <p><code>research-agent [question] [--fault F]</code>, <code>research-agent replay TRACE [--mode M]</code> and <code>research-agent eval DATASET --label L</code>.</p>
+      <p>Shared options:</p>
+      <ul class="list">
+        <li><code>--llm mock|ollama</code></li>
+        <li><code>--prompt grounded|concise</code></li>
+        <li><code>--fallback</code></li>
+      </ul>
+    </section>
+
+    <!-- ============ CONFIG ============ -->
+    <section id="config" class="doc" aria-labelledby="config-title">
+      <h2 class="sec" id="config-title">Configuration</h2>
+      <h3>Server <span class="pill">environment variables</span></h3>
+      <p>All server settings are environment variables prefixed with <code>OBZERVE_</code>. The most useful ones:</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Variable</th><th>Default</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td><code>OBZERVE_DATABASE_URL</code></td><td class="wrap"><code>postgresql+asyncpg://obzerve:obzerve@localhost:5432/obzerve</code></td><td>PostgreSQL connection</td></tr>
+          <tr><td><code>OBZERVE_INGEST_MODE</code></td><td><code>direct</code></td><td><code>queue</code> buffers ingestion in Redis (survives database outages)</td></tr>
+          <tr><td><code>OBZERVE_REDIS_URL</code></td><td><code>redis://localhost:6379/0</code></td><td>Queue connection</td></tr>
+          <tr><td><code>OBZERVE_QUEUE_MAX_LENGTH</code></td><td><code>10000</code></td><td>Backlog size before ingestion answers 503 + <code>Retry-After</code></td></tr>
+          <tr><td><code>OBZERVE_MAX_INGEST_BYTES</code></td><td><code>5242880</code></td><td>Largest accepted request (after decompression)</td></tr>
+          <tr><td><code>OBZERVE_API_KEY_CACHE_TTL_S</code></td><td><code>60</code></td><td>How long a valid key is cached (also the delay before a revocation applies)</td></tr>
+          <tr><td><code>OBZERVE_CORS_ORIGINS</code></td><td><code>["http://localhost:5173"]</code></td><td>Browser origins allowed to call the API directly</td></tr>
+          <tr><td><code>OBZERVE_WORKER_MAX_DELIVERIES</code></td><td><code>5</code></td><td>Attempts before a failing message is dead-lettered</td></tr>
+          <tr><td><code>OBZERVE_METRICS_ENABLED</code></td><td><code>true</code></td><td>Serve Prometheus metrics at <code>/metrics</code></td></tr>
+        </tbody>
+      </table></div>
+      <p>For the container stack: <code>OBZERVE_DB_PASSWORD</code>, <code>OBZERVE_API_PORT</code> and <code>OBZERVE_WEB_PORT</code>, and <code>OBZERVE_*_BIND</code> (see <a href="#selfhost">Self-host</a>).</p>
+      <h3>SDK <span class="pill">Observer(...)</span></h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Argument</th><th>Default</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td><code>endpoint</code></td><td><code>http://localhost:8000</code></td><td>The Obzerve API</td></tr>
+          <tr><td><code>api_key</code></td><td>none</td><td>Project key with the <code>ingest</code> scope</td></tr>
+          <tr><td><code>service_name</code></td><td><code>agent</code></td><td>Shown on every trace</td></tr>
+          <tr><td><code>capture_payloads</code></td><td><code>True</code></td><td>Record inputs and outputs (redacted)</td></tr>
+          <tr><td><code>max_payload_chars</code></td><td><code>8192</code></td><td>Displayed payloads are truncated beyond this</td></tr>
+          <tr><td><code>max_queue_size</code></td><td><code>2048</code></td><td>Spans buffered before new ones are dropped</td></tr>
+          <tr><td><code>export_timeout_s</code></td><td><code>5.0</code></td><td>Time limit for each export, including retries</td></tr>
+          <tr><td><code>enabled</code></td><td><code>True</code></td><td><code>False</code> makes the SDK record nothing (e.g. in unit tests)</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <!-- ============ TROUBLESHOOTING ============ -->
+    <section id="troubleshooting" class="doc" aria-labelledby="troubleshooting-title">
+      <h2 class="sec" id="troubleshooting-title">Troubleshooting</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Symptom</th><th>Fix</th></tr></thead>
+        <tbody>
+          <tr><td>Dashboard says <strong>Not authorized</strong></td><td>Enter a key under <strong>API key</strong> in the top bar (<code>dev_project_key</code> locally). <code>make stack</code> builds the dashboard without one.</td></tr>
+          <tr><td><code>obzerve</code> CLI returns <code>HTTP 401</code></td><td><code>export OBZERVE_API_KEY=…</code>; the CLI has no default key.</td></tr>
+          <tr><td><code>address already in use</code></td><td>Containers and the development setup share ports 8000 and 5432. Stop one (<code>make stack-down</code>), or move the stack with <code>OBZERVE_API_PORT</code> / <code>OBZERVE_WEB_PORT</code>.</td></tr>
+          <tr><td>No traces appear</td><td>Check <code>curl $OBZERVE_ENDPOINT/readyz</code> and the key. <code>observer.stats()</code> shows whether spans failed or were dropped. Call <code>observer.flush()</code> before a short script exits.</td></tr>
+          <tr><td><code>This trace cannot be replayed</code></td><td>The trace has no replayable steps. Use <code>observer.instrument()</code> or <code>@observer.replayable</code>, then record a new one.</td></tr>
+          <tr><td>Qwen3 through Ollama's OpenAI endpoint returns empty text</td><td>Pass <code>reasoning_effort="none"</code>. Otherwise the whole token budget goes to thinking (finish reason <code>length</code>).</td></tr>
+          <tr><td>The same Anthropic call appears twice</td><td>Both Obzerve and the Anthropic SDK's own tracing reach Obzerve; use <code>Anthropic(open_telemetry=False)</code>.</td></tr>
+          <tr><td>Server tests are skipped</td><td>PostgreSQL or Redis isn't running: <code>make db-up</code>.</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <!-- ============ ROADMAP ============ -->
+    <section id="roadmap" class="doc" aria-labelledby="roadmap-title">
+      <h2 class="sec" id="roadmap-title">What's next</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Version</th><th>Status</th><th>Contents</th></tr></thead>
+        <tbody>
+          <tr><td><code>0.1.0</code></td><td>Released</td><td>Tracing, metrics, estimated cost, queue-mode ingestion, replay, regression testing, CI gate, container deployment, and the <code>obzerve</code> SDK on PyPI with automatic instrumentation</td></tr>
+          <tr><td><code>0.1.1</code></td><td>Planned</td><td>User accounts and login for the dashboard (replacing browser-held API keys), and alerting on p95 latency, error and timeout rates, spend and eval scores, with windows, minimum sample counts and cooldowns</td></tr>
+        </tbody>
+      </table></div>
+      <p>Found a problem or have an idea? <a href="https://github.com/aryanfredericks/Obzerve/issues">Open an issue</a>.</p>
+    </section>
+
+    <footer>
+      <span>Obzerve · Apache-2.0</span>
+      <a href="https://github.com/aryanfredericks/Obzerve">GitHub</a>
+      <a href="https://pypi.org/project/obzerve/">PyPI</a>
+      <a href="https://github.com/aryanfredericks/Obzerve/blob/main/sdk/python/CHANGELOG.md">Changelog</a>
+      <span>Docs for v0.1.0</span>
+    </footer>
+    </div>
+  </main>
+</div>
+
+<script>
+(function () {
+  // ---- real trace, drawn to scale (ms from a recorded research_agent run) ----
+  var TOTAL = 6390;
+  var spans = [
+    ["research_agent", "agent", 0, 6390, 0],
+    ["search_web", "tool", 0, 177, 1],
+    ["retrieve_documents", "retrieval", 177, 31, 1],
+    ["synthesize_evidence", "chain", 208, 3160, 1],
+    ["llm.generate", "llm", 208, 3160, 2],
+    ["handoff:report_writer", "handoff", 3368, 3020, 1],
+    ["report_writer", "agent", 3368, 3020, 2],
+    ["llm.generate", "llm", 3368, 3020, 3]
+  ];
+  var rows = document.getElementById("trace-rows");
+  function fmt(ms) { return ms >= 1000 ? (ms / 1000).toFixed(2) + " s" : ms + " ms"; }
+  spans.forEach(function (s) {
+    var left = (s[2] / TOTAL) * 100, width = Math.max((s[3] / TOTAL) * 100, 0.5);
+    var row = document.createElement("div");
+    row.className = "trace-row";
+    var label = document.createElement("div");
+    label.className = "trace-label";
+    label.style.paddingLeft = (10 + s[4] * 14) + "px";
+    var kind = document.createElement("span");
+    kind.className = "kind k-" + s[1];
+    kind.textContent = s[1];
+    var name = document.createElement("span");
+    name.className = "name";
+    name.textContent = s[0];
+    label.append(kind, name);
+    var track = document.createElement("div");
+    track.className = "trace-track";
+    var bar = document.createElement("div");
+    bar.className = "trace-bar bg-" + s[1];
+    bar.style.left = left + "%";
+    bar.style.width = width + "%";
+    var dur = document.createElement("span");
+    dur.className = "trace-dur";
+    dur.textContent = fmt(s[3]);
+    if (left + width <= 78) dur.style.left = (left + width + 1) + "%";       // after the bar
+    else if (left >= 14) dur.style.right = (100 - left + 1) + "%";        // before the bar
+    else { dur.style.right = "1%"; dur.classList.add("inside"); }         // inside its end
+    track.append(bar, dur);
+    row.append(label, track);
+    rows.append(row);
+  });
+
+  // ---- light syntax colouring: comments, strings, keywords ----
+  var KEYWORDS = {
+    python: /\b(from|import|def|return|with|as|lambda|async|await|for|in|if|else|None|True|False|print)\b/g,
+    bash: /\b(export|echo|cd|make|uv|pip|git|curl|podman|obzerve|obzerve-server|research-agent)\b/g,
+    yaml: /^(\s*-?\s*)([\w.-]+)(?=:)/gm
+  };
+  function escapeHtml(t) { return t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+  document.querySelectorAll("pre code[data-lang]").forEach(function (el) {
+    var lang = el.dataset.lang;
+    var lines = el.textContent.split("\n");
+    el.innerHTML = lines.map(function (line) {
+      // split off a trailing comment that is not inside quotes
+      var inS = false, inD = false, cut = -1;
+      for (var i = 0; i < line.length; i++) {
+        var ch = line[i];
+        if (ch === "'" && !inD) inS = !inS;
+        else if (ch === '"' && !inS) inD = !inD;
+        else if (ch === "#" && !inS && !inD && (i === 0 || /\s/.test(line[i - 1]))) { cut = i; break; }
+      }
+      var code = cut >= 0 ? line.slice(0, cut) : line;
+      var comment = cut >= 0 ? line.slice(cut) : "";
+      var parts = code.split(/("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')/);
+      var out = parts.map(function (p, idx) {
+        if (idx % 2 === 1) return '<span class="t-s">' + escapeHtml(p) + "</span>";
+        var html = escapeHtml(p);
+        if (lang === "yaml") return html.replace(KEYWORDS.yaml, '$1<span class="t-k">$2</span>');
+        return KEYWORDS[lang] ? html.replace(KEYWORDS[lang], '<span class="t-k">$1</span>') : html;
+      }).join("");
+      return out + (comment ? '<span class="t-c">' + escapeHtml(comment) + "</span>" : "");
+    }).join("\n");
+  });
+
+  // ---- copy buttons ----
+  document.querySelectorAll(".code").forEach(function (block) {
+    var btn = document.createElement("button");
+    btn.className = "copy";
+    btn.type = "button";
+    btn.textContent = "Copy";
+    btn.addEventListener("click", function () {
+      var text = block.querySelector("pre").innerText;
+      function done(msg) { btn.textContent = msg; setTimeout(function () { btn.textContent = "Copy"; }, 1400); }
+      function selectFallback() {
+        var range = document.createRange();
+        range.selectNodeContents(block.querySelector("pre"));
+        var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
+        done("Selected");
+      }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function () { done("Copied"); }, selectFallback);
+      } else { selectFallback(); }
+    });
+    block.append(btn);
+  });
+
+  // ---- theme: system / light / dark ----
+  var root = document.documentElement, themeBtn = document.getElementById("theme-btn");
+  var order = ["system", "light", "dark"];
+  function applyTheme(t) {
+    if (t === "system") root.removeAttribute("data-theme"); else root.setAttribute("data-theme", t);
+    document.getElementById("theme-name").textContent = t;
+    themeBtn.setAttribute("aria-label", "Colour theme: " + t + ". Click to change.");
+  }
+  var saved = "system";
+  try { saved = localStorage.getItem("obzerve-docs-theme") || "system"; } catch (e) {}
+  if (order.indexOf(saved) < 0) saved = "system";
+  applyTheme(saved);
+  themeBtn.addEventListener("click", function () {
+    saved = order[(order.indexOf(saved) + 1) % order.length];
+    applyTheme(saved);
+    try { localStorage.setItem("obzerve-docs-theme", saved); } catch (e) {}
+  });
+
+  // ---- mobile contents menu ----
+  var toc = document.getElementById("toc"), menuBtn = document.getElementById("menu-btn");
+  function setMenu(open) { toc.classList.toggle("open", open); menuBtn.setAttribute("aria-expanded", String(open)); }
+  menuBtn.addEventListener("click", function () { setMenu(!toc.classList.contains("open")); });
+  toc.addEventListener("click", function (e) { if (e.target.closest("a")) setMenu(false); });
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") setMenu(false); });
+
+  // ---- highlight the section in view ----
+  var links = {};
+  toc.querySelectorAll("a[href^='#']").forEach(function (a) { links[a.getAttribute("href").slice(1)] = a; });
+  if ("IntersectionObserver" in window) {
+    var visible = {};
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) { visible[en.target.id] = en.isIntersecting; });
+      var first = Object.keys(links).find(function (id) { return visible[id]; });
+      if (first) Object.keys(links).forEach(function (id) { links[id].classList.toggle("active", id === first); });
+    }, { rootMargin: "-70px 0px -55% 0px" });
+    Object.keys(links).forEach(function (id) { var el = document.getElementById(id); if (el) io.observe(el); });
+  }
+})();
+</script>
+</body>
+</html>
